@@ -7,8 +7,6 @@ import com.amazonaws.services.sqs.model.Message;
 /**
  * Abstraction for a runner that is driven by an AWS SQS Message.
  * 
- * @author John
- * 
  */
 public interface MessageDrivenRunner {
 
@@ -34,7 +32,7 @@ public interface MessageDrivenRunner {
 	 *             runner depends on a services that is currently unavailable,
 	 *             then throwing a a {@link RecoverableMessageException} will
 	 *             indicates to the container that the message should be
-	 *             returned to the queue for furture processing.
+	 *             returned to the queue for future processing.
 	 */
 	public void run(ProgressCallback<Message> progressCallback, Message message)
 			throws RecoverableMessageException;

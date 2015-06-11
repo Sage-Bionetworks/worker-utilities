@@ -26,17 +26,9 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 	 * IoC constructor.
 	 * @param semaphore
 	 */
-	public SemaphoreGatedRunnerImpl(CountingSemaphore semaphore) {
+	public SemaphoreGatedRunnerImpl(CountingSemaphore semaphore, SemaphoreGatedRunnerConfiguration<T> config) {
 		super();
 		this.semaphore = semaphore;
-	}
-
-	/**
-	 * Must be configured before calling {@link #run()}
-	 * 
-	 * @param config
-	 */
-	public void setConfiguration(SemaphoreGatedRunnerConfiguration<T> config){
 		if(config == null){
 			throw new IllegalArgumentException("Configuration cannot be null");
 		}
@@ -51,7 +43,6 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 	 * This is the run of the 'runnable'
 	 */
 	public void run() {
-		validateConfig();
 		try {
 			// attempt to get a lock
 			final String lockToken = semaphore.attemptToAcquireLock(this.lockKey, this.lockTimeoutSec, this.maxLockCount);

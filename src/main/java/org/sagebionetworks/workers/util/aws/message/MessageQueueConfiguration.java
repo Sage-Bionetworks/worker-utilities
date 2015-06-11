@@ -78,4 +78,44 @@ public class MessageQueueConfiguration {
 		this.maxFailureCount = maxFailureCount;
 	}
 
+	/**
+	 * @see {@link MessageQueueConfiguration#setQueueName(String)}
+	 * @return
+	 */
+	public String getQueueName() {
+		return queueName;
+	}
+
+	/**
+	 * @see {@link MessageQueueConfiguration#getTopicNamesToSubscribe()}
+	 * @return
+	 */
+	public List<String> getTopicNamesToSubscribe() {
+		return topicNamesToSubscribe;
+	}
+
+	/**
+	 * @see {@link MessageQueueConfiguration#isEnabled()}
+	 * @return
+	 */
+	public boolean isEnabled() {
+		return isEnabled;
+	}
+
+	/**
+	 * @see {@link MessageQueueConfiguration#getDeadLetterQueueName()}
+	 * @return
+	 */
+	public String getDeadLetterQueueName() {
+		return deadLetterQueueName;
+	}
+
+	/**
+	 * @see {@link MessageQueueConfiguration#getMaxFailureCount()}
+	 * @return
+	 */
+	public Integer getMaxFailureCount() {
+		return maxFailureCount;
+	}
+
 }

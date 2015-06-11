@@ -11,7 +11,7 @@ import com.amazonaws.services.sqs.model.Message;
  * visibility.
  * 
  */
-public interface MessageReciever extends ProgressingRunner<Message> {
+public interface MessageReceiver extends ProgressingRunner<Message> {
 
 	/**
 	 * It is not possible to guarantee all message are removed from a queue.

@@ -4,8 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,55 +22,77 @@ import com.amazonaws.services.sqs.model.GetQueueAttributesResult;
 import com.amazonaws.services.sqs.model.SetQueueAttributesRequest;
 
 /**
- * The default implementation of a message queue.
-
+ * Provides information about an AWS SQS queue. The constructor will create a
+ * queue with the configured name if the queue does not already exist. The ARN
+ * and URL of the queue will also be cached for the queue.
+ * 
+ * If the provided configuration information includes a dead letter queue name
+ * and max failure count, then queue will be configured with the dead letter
+ * queue.
+ * 
+ * Additionally, if the configuration includes a list of AWS SNS topic names the
+ * queue will be configured to receive messages from each topic. This includes
+ * creating each topic if it does not exist, configuring the policy of the queue
+ * such that the topic has permission to push messages to the queue and subscribing the
+ * queue to the topic.
  */
 public class MessageQueueImpl implements MessageQueue {
+
+	public static final String POLICY_KEY = "Policy";
+
+	public static final String REDRIVE_POLICY_KEY = "RedrivePolicy";
+
+	public static final String PROTOCOL_SQS = "sqs";
+
+	public static final String QUEUE_ARN_KEY = "QueueArn";
 
 	private Logger logger = LogManager.getLogger(MessageQueueImpl.class);
 
 	// The first argument is the ARN of the queue, and the second is the ARN of the topic.
-	private static final String GRAN_SET_MESSAGE_TEMPLATE = "{ \"Id\":\"GrantRepoTopicSendMessage\", \"Statement\": [{ \"Sid\":\"1\",  \"Resource\": \"%1$s\", \"Effect\": \"Allow\", \"Action\": \"SQS:SendMessage\", \"Condition\": {\"ArnEquals\": {\"aws:SourceArn\": \"%2$s\"}}, \"Principal\": {\"AWS\": \"*\"}}]}";
+	public static final String GRAN_SET_MESSAGE_TEMPLATE = "{ \"Id\":\"GrantRepoTopicSendMessage\", \"Statement\": [{ \"Sid\":\"1\",  \"Resource\": \"%1$s\", \"Effect\": \"Allow\", \"Action\": \"SQS:SendMessage\", \"Condition\": {\"ArnEquals\": {\"aws:SourceArn\": \"%2$s\"}}, \"Principal\": {\"AWS\": \"*\"}}]}";
 
 	private AmazonSQSClient awsSQSClient;
 
 	private AmazonSNSClient awsSNSClient;
 
 	private final String queueName;
-	private final List<String> objectTypes;
+	private final List<String> topicNamesToSubscribe;
 	private String queueUrl;
-	private String topicPrefixOrName;
 	private boolean isEnabled;
-	private final Integer maxReceiveCount;
+	private final Integer maxFailureCount;
 	private final String deadLetterQueueName;
 	private String deadLetterQueueUrl;
-
-	public MessageQueueImpl(final String queueName, String topicPrefixOrName, List<String> objectTypes, boolean isEnabled) {
-		this(queueName, topicPrefixOrName, objectTypes, isEnabled, null, null);
-	}
 	
-	public MessageQueueImpl(final String queueName, String topicPrefixOrName, List<String> objectTypes, boolean isEnabled,
-			String deadLetterQueueName, Integer maxReceiveCount) {
-		if (queueName == null) {
+	/**
+	 * @param awsSQSClient An AmazonSQSClient configured with credentials.
+	 * @param awsSNSClient An AmazonSNSClient configured with credentials.
+	 * @param config Configuration information for this queue.
+	 */
+	public MessageQueueImpl(AmazonSQSClient awsSQSClient,
+			AmazonSNSClient awsSNSClient, MessageQueueConfiguration config) {
+		super();
+		this.awsSQSClient = awsSQSClient;
+		this.awsSNSClient = awsSNSClient;
+		this.isEnabled = config.isEnabled();
+		this.queueName = config.getQueueName();
+		if (this.queueName == null) {
 			throw new IllegalArgumentException("QueueName cannot be null");
 		}
-		if (objectTypes != null && objectTypes.isEmpty()) {
-			throw new IllegalArgumentException("ObjectTypes cannot be empty");
-		}
-		if (! validateDeadLetterParams(deadLetterQueueName, maxReceiveCount)) {
-			throw new IllegalArgumentException("maxReceiveCount and deadLetterQueueName must both be either null or not null");
-		}
-		this.isEnabled = isEnabled;
-		this.queueName = queueName;
-		this.objectTypes = objectTypes;
-		this.topicPrefixOrName = topicPrefixOrName;
-		this.deadLetterQueueName = deadLetterQueueName;
-		this.maxReceiveCount = maxReceiveCount;
+		this.topicNamesToSubscribe = config.getTopicNamesToSubscribe();
+		this.deadLetterQueueName = config.getDeadLetterQueueName();
+		this.maxFailureCount = config.getMaxFailureCount();
 		this.deadLetterQueueUrl = null;
+		if (! validateDeadLetterParams(deadLetterQueueName, maxFailureCount)) {
+			throw new IllegalArgumentException("maxFailureCount and deadLetterQueueName must both be either null or not null");
+		}
+		setup();
 	}
 
-	@PostConstruct
-	private void init() {
+
+	/**
+	 * The idempotent queue setup.
+	 */
+	private void setup() {
 		// Do nothing if it is not enabled
 		if(!isEnabled){
 			logger.info("Queue: "+queueName+" will not be configured because it is not enabled");
@@ -92,15 +112,20 @@ public class MessageQueueImpl implements MessageQueue {
 			dlqArn = getQueueArn(dlqUrl);
 			this.logger.info("Queue created. URL: " + dlqUrl + " ARN: " + dlqArn);
 			this.deadLetterQueueUrl = dlqUrl;
-			grantRedrivePolicy(queueUrl, dlqArn, maxReceiveCount);
+			grantRedrivePolicy(queueUrl, dlqArn, maxFailureCount);
 		}
 
 		// create topics and setup access.
-		createAndGrandAccessToTopics(queueArn, queueUrl, this.objectTypes);
+		createAndGrandAccessToTopics(queueArn, queueUrl, this.topicNamesToSubscribe);
 
 		this.queueUrl = queueUrl;
 	}
 	
+	/**
+	 * Create the queue if it does not exist and return the queue URL
+	 * @param qName
+	 * @return The URL fo the queue.
+	 */
 	protected String createQueue(String qName) {
 		CreateQueueRequest cqRequest = new CreateQueueRequest(qName);
 		CreateQueueResult cqResult = this.awsSQSClient.createQueue(cqRequest);
@@ -108,8 +133,13 @@ public class MessageQueueImpl implements MessageQueue {
 		return qUrl;
 	}
 	
+	/**
+	 * Lookup the ARN of the queue using the queus's URL.
+	 * @param qUrl
+	 * @return
+	 */
 	protected String getQueueArn(String qUrl) {
-		String attrName = "QueueArn";
+		String attrName = QUEUE_ARN_KEY;
 		GetQueueAttributesRequest attrRequest = new GetQueueAttributesRequest()
 				.withQueueUrl(qUrl)
 				.withAttributeNames(attrName);
@@ -121,6 +151,12 @@ public class MessageQueueImpl implements MessageQueue {
 		return qArn;
 	}
 	
+	/**
+	 * Validate that both or neither parameter are set.
+	 * @param deadLetterQueueName
+	 * @param maxReceiveCount
+	 * @return
+	 */
 	protected static boolean validateDeadLetterParams(String deadLetterQueueName, Integer maxReceiveCount) {
 		if (deadLetterQueueName == null) {
 			return (maxReceiveCount == null);
@@ -140,36 +176,30 @@ public class MessageQueueImpl implements MessageQueue {
 	}
 	
 	/**
-	 * Create a topic (if needed) for each type and grant access to publish from the topics to the queue.
+	 * Create each topic in the list (if needed), grant access access to publish
+	 * from the topics to the queue, and subscribe the queue to the topic.
+	 * 
+	 * @param queueArn
+	 * @param queueUrl
+	 * @param topicsToSubscribe List of topic names to register this queue with.
+	 */
+	private void createAndGrandAccessToTopics(String queueArn, String queueUrl, List<String> topicsToSubscribe) {
+		if (topicsToSubscribe != null) {
+			for (String topicName : topicsToSubscribe) {
+				createAndGrandAccessToTopic(queueArn, queueUrl, topicName);
+			}
+		} 
+	}
+	
+	/**
+	 * Create a topic (if needed), grant access access to publish from the
+	 * topics to the queue, and subscribe the queue to the topic.
 	 * 
 	 * @param queueArn
 	 * @param queueUrl
 	 * @param type
 	 */
-	private void createAndGrandAccessToTopics(String queueArn, String queueUrl, List<String> types) {
-		if (types == null) {
-			createAndGrandAccessToTopic(queueArn, queueUrl, null);
-		} else {
-			for (String type : types) {
-				createAndGrandAccessToTopic(queueArn, queueUrl, type);
-			}
-		}
-	}
-	
-	/**
-	 * Create a topic (if needed) and grant access to publish from the topic to the queue.
-	 * @param queueArn
-	 * @param queueUrl
-	 * @param type
-	 */
-	private void createAndGrandAccessToTopic(String queueArn, String queueUrl, String type){
-		// Let the queue subscribe to the topic
-		String topicName;
-		if (type == null) {
-			topicName = topicPrefixOrName;
-		} else {
-			topicName = topicPrefixOrName + type;
-		}
+	protected void createAndGrandAccessToTopic(String queueArn, String queueUrl, String topicName){
 		CreateTopicRequest ctRequest = new CreateTopicRequest(topicName);
 		CreateTopicResult topicResult = this.awsSNSClient.createTopic(ctRequest);
 		final String topicArn = topicResult.getTopicArn();
@@ -178,72 +208,90 @@ public class MessageQueueImpl implements MessageQueue {
 			throw new IllegalStateException("Failed to subscribe queue (" + queueArn + ") to topic (" + topicArn + ")");
 		}
 		// Make sure the topic has the permission it needs
-		grantPolicyIfNeeded(topicArn, queueArn, queueUrl, type);
+		grantPolicyIfNeeded(topicArn, queueArn, queueUrl);
 	}
 
 	/**
 	 * Subscribes this queue to the topic if needed.
+	 * @param topicArn
+	 * @param queueArn
+	 * @return
 	 */
-	private Subscription subscribeQueueToTopicIfNeeded(final String topicArn, final String queueArn) {
+	protected Subscription subscribeQueueToTopicIfNeeded(final String topicArn, final String queueArn) {
 		logger.info("Subscribing " + queueArn + " to " + topicArn);
-		assert topicArn != null;
-		assert queueArn != null;
+		if(topicArn == null){
+			throw new IllegalArgumentException("topicArn cannot be null");
+		}
+		if(queueArn == null){
+			throw new IllegalArgumentException("queueArn cannot be null");
+		}
 		Subscription sub = findSubscription(topicArn, queueArn);
 		if (sub != null) {
 			return sub;
 		}
 		// We did not find the subscription so create it
-		SubscribeRequest request = new SubscribeRequest(topicArn, "sqs", queueArn);
+		SubscribeRequest request = new SubscribeRequest(topicArn, PROTOCOL_SQS, queueArn);
 		this.awsSNSClient.subscribe(request);
 		return findSubscription(topicArn, queueArn);
 	}
 
 	/**
-	 * Finds this subscription if it exists.
+	 * Finds this subscription of the topic to the queue if it exists.
+	 * @param topicArn
+	 * @param queueArn
+	 * @return
 	 */
-	private Subscription findSubscription(final String topicArn, final String queueArn) {
-		assert topicArn != null;
-		assert queueArn != null;
+	protected Subscription findSubscription(final String topicArn, final String queueArn) {
+		if(topicArn == null){
+			throw new IllegalArgumentException("topicArn cannot be null");
+		}
+		if(queueArn == null){
+			throw new IllegalArgumentException("queueArn cannot be null");
+		}
 		ListSubscriptionsByTopicResult result;
 		do {
 			// Keep looking until we find it or run out of nextTokens.
 			ListSubscriptionsByTopicRequest request = new ListSubscriptionsByTopicRequest(topicArn);
 			result = this.awsSNSClient.listSubscriptionsByTopic(request);
 			for (Subscription subscription : result.getSubscriptions()) {
-				if (subscription.getProtocol().equals("sqs") &&
-						subscription.getEndpoint().equals(queueArn)) {
+				if (subscription.getProtocol().equals(PROTOCOL_SQS) &&
+						subscription.getEndpoint().equals(queueArn) && 
+						subscription.getTopicArn().equals(topicArn)) {
 					return subscription;
 				}
 			}
 		} while (result.getNextToken() != null);
 		return null;
 	}
-
+	
 	/**
-	 * Grants the topic permission to write to the queue if it does not already have such a permission.
+	 * Grant the topic permission to write to the queue if it does not already
+	 * have such a permission.
+	 * 
+	 * @param topicArn
+	 * @param queueArn
+	 * @param queueUrl
 	 */
-	private void grantPolicyIfNeeded(final String topicArn, final String queueArn, final String queueUrl, String type) {
-		assert topicArn != null;
-		String arnToGrant = topicArn;
-		if (type != null) {
-			// All topics for this stack should be able to publish to this queue, so we setup a wildcard ARN:
-			// for example: 'arn:aws:sns:us-east-1:<userid>:<stack>-<instances>-repo-ENTITY' will become
-			// 'arn:aws:sns:us-east-1:<userid>:<stack>-<instances>-repo-*;
-			String wildArn = topicArn.replaceAll(type, "*");
-			arnToGrant = wildArn;
+	private void grantPolicyIfNeeded(final String topicArn, final String queueArn, final String queueUrl) {
+		if(topicArn == null){
+			throw new IllegalArgumentException("topicArn cannot be null");
 		}
+		if(queueArn == null){
+			throw new IllegalArgumentException("queueArn cannot be null");
+		}
+		String arnToGrant = topicArn;
 		GetQueueAttributesRequest attrRequest = new GetQueueAttributesRequest()
 				.withQueueUrl(queueUrl)
-				.withAttributeNames("Policy");
+				.withAttributeNames(POLICY_KEY);
 		GetQueueAttributesResult attrResult = this.awsSQSClient.getQueueAttributes(attrRequest);
-		String policyString =  attrResult.getAttributes().get("Policy");
+		String policyString =  attrResult.getAttributes().get(POLICY_KEY);
 		this.logger.info("Currently policy: " + policyString);
 		if (policyString == null || policyString.indexOf(arnToGrant) < 1) {
 			this.logger.info("Policy not set to grant the topic write permission to the queue. Adding a policy now...");
 			// Now we need to grant the topic permission to send messages to the queue.
-			String permissionString = String.format(GRAN_SET_MESSAGE_TEMPLATE, queueArn, arnToGrant);
+			String permissionString = createGrantPolicyTopicToQueueString(queueArn, arnToGrant);
 			Map<String, String> map = new HashMap<String, String>();
-			map.put("Policy", permissionString);
+			map.put(POLICY_KEY, permissionString);
 			this.logger.info("Setting policy to: "+permissionString);
 			SetQueueAttributesRequest setAttrRequest = new SetQueueAttributesRequest()
 					.withQueueUrl(queueUrl)
@@ -253,29 +301,53 @@ public class MessageQueueImpl implements MessageQueue {
 			this.logger.info("Topic already has sendMessage permission on this queue");
 		}
 	}
+
+	/**
+	 * The JSON policy string used to grant a topic permission to forward messages to to a queue.
+	 * @param queueArn
+	 * @param arnToGrant
+	 * @return
+	 */
+	public static String createGrantPolicyTopicToQueueString(final String queueArn,
+			String arnToGrant) {
+		return String.format(GRAN_SET_MESSAGE_TEMPLATE, queueArn, arnToGrant);
+	}
 	
-	protected void grantRedrivePolicy(String qUrl, String dlqArn, Integer maxReceiveCount) {
+	/**
+	 * Grant the required permission to push messages the dead letter queue.
+	 * 
+	 * @param queueUrl
+	 * @param deadLetterQueueArn
+	 * @param maxReceiveCount
+	 */
+	protected void grantRedrivePolicy(String queueUrl, String deadLetterQueueArn, Integer maxReceiveCount) {
 		GetQueueAttributesRequest attrRequest = new GetQueueAttributesRequest()
-			.withQueueUrl(qUrl)
-			.withAttributeNames("RedrivePolicy");
+			.withQueueUrl(queueUrl)
+			.withAttributeNames(REDRIVE_POLICY_KEY);
 		GetQueueAttributesResult attrResult = this.awsSQSClient.getQueueAttributes(attrRequest);
-		String ps =  attrResult.getAttributes().get("RedrivePolicy");
+		String ps =  attrResult.getAttributes().get(REDRIVE_POLICY_KEY);
 		this.logger.info("Current redrive policy: " + ps);
-		if (ps == null || ps.indexOf(dlqArn) < 1) {
-			String redrivePolicy = getRedrivePolicy(maxReceiveCount, dlqArn);
+		if (ps == null || ps.indexOf(deadLetterQueueArn) < 1) {
+			String redrivePolicy = getRedrivePolicy(maxReceiveCount, deadLetterQueueArn);
 			SetQueueAttributesRequest queueAttributes = new SetQueueAttributesRequest();
 			Map<String,String> attributes = new HashMap<String,String>();            
-			attributes.put("RedrivePolicy", redrivePolicy);            
+			attributes.put(REDRIVE_POLICY_KEY, redrivePolicy);            
 			queueAttributes.setAttributes(attributes);
-			queueAttributes.setQueueUrl(qUrl);
+			queueAttributes.setQueueUrl(queueUrl);
 			this.awsSQSClient.setQueueAttributes(queueAttributes);
 		} else {
 			this.logger.info("Dead letter queue already configured on this queue");
 		}
 	}
 
-	protected String getRedrivePolicy(Integer maxReceiveCount, String dlqArn) {
-		return(String.format("{\"maxReceiveCount\":\"%d\", \"deadLetterTargetArn\":\"%s\"}", maxReceiveCount, dlqArn));
+	/**
+	 * Create the RedrivePolicy JSON for setting up a dead letter queue.
+	 * @param maxReceiveCount
+	 * @param deadLetterQueArn
+	 * @return
+	 */
+	protected String getRedrivePolicy(Integer maxReceiveCount, String deadLetterQueArn) {
+		return(String.format("{\"maxReceiveCount\":\"%d\", \"deadLetterTargetArn\":\"%s\"}", maxReceiveCount, deadLetterQueArn));
 	}
 	
 	@Override
@@ -290,7 +362,7 @@ public class MessageQueueImpl implements MessageQueue {
 	
 	@Override
 	public Integer getMaxReceiveCount() {
-		return this.maxReceiveCount;
+		return this.maxFailureCount;
 	}
 	
 	@Override

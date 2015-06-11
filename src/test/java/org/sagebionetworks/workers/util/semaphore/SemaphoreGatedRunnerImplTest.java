@@ -36,16 +36,16 @@ public class SemaphoreGatedRunnerImplTest {
 		lockKey = "aKey";
 		lockTimeoutSec = 10;
 		maxLockCount = 2;
-		gate = new SemaphoreGatedRunnerImpl(mockSemaphore);
+
 		config = new SemaphoreGatedRunnerConfiguration<Void>(mockRunner, lockKey, lockTimeoutSec, maxLockCount);
-		gate.setConfiguration(config);
+		gate = new SemaphoreGatedRunnerImpl(mockSemaphore, config);
 	}
 	
 	@Test (expected=IllegalArgumentException.class)
 	public void testConfigureBad(){
 		mockRunner = null;
 		config = new SemaphoreGatedRunnerConfiguration<Void>(mockRunner, lockKey, lockTimeoutSec, maxLockCount);
-		gate.setConfiguration(config);
+		gate = new SemaphoreGatedRunnerImpl(mockSemaphore, config);
 	}
 	
 	@Test
