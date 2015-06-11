@@ -15,6 +15,7 @@ import org.mockito.stubbing.Answer;
 import org.sagebionetworks.workers.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
+import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
@@ -211,5 +212,16 @@ public class PollingMessageReceiverImplTest {
 		 * The rest of the calls should be throttled.
 		 */
 		verify(mockProgressCallback, times(3)).progressMade(any(Message.class));
+		ChangeMessageVisibilityRequest changeRequset = new ChangeMessageVisibilityRequest();
+		changeRequset.setQueueUrl(queueUrl);
+		changeRequset.setReceiptHandle(message.getReceiptHandle());
+		changeRequset.setVisibilityTimeout(timeout);
+		/*
+		 * changeMessageVisibility() should be made for the following:
+		 * The first time the runner calls the callback.
+		 * The last time the runner calls the callback after waiting for 15 seconds.
+		 * The rest of the calls should be throttled.
+		 */
+		verify(mockAmazonSQSClient, times(2)).changeMessageVisibility(changeRequset);
 	}
 }

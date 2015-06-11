@@ -5,7 +5,7 @@ import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 
 /**
  * Configuration for a SemaphoreGatedRunner.
- *
+ * 
  * @param <T>
  *            The type of the ProgressingRunner
  */
@@ -47,13 +47,19 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 		this.maxLockCount = maxLockCount;
 	}
 
+	/**
+	 * The runner that will be called when a lock is acquired. The lock will be
+	 * held for the duration of this runner's run() method.
+	 * 
+	 * @return
+	 */
 	public ProgressingRunner<T> getRunner() {
 		return runner;
 	}
 
 	/**
 	 * The runner that will be called when a lock is acquired. The lock will be
-	 * held for the duration of this runners run() method.
+	 * held for the duration of this runner's run() method.
 	 * 
 	 * @param runner
 	 */
@@ -62,7 +68,7 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 	}
 
 	/**
-	 * @see {@link SemaphoreGatedRunnerConfiguration#setLockKey(String)}
+	 * The semaphore lock key that must be held in order to run the runner.
 	 * 
 	 * @return
 	 */
@@ -80,7 +86,10 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 	}
 
 	/**
-	 * @see {@link #setLockTimeoutSec(long)}
+	 * The timeout of the semaphore lock in seconds. The runner must either
+	 * terminate before this timeout expires or call
+	 * {@link ProgressCallback#progressMade()} to extend the timeout.
+	 * 
 	 * @return
 	 */
 	public long getLockTimeoutSec() {
@@ -99,8 +108,10 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 	}
 
 	/**
+	 * The maximum number of concurrent locks that can be issued for the given
+	 * semaphore key. If the runner is expected to be a singleton, then set this
+	 * value to one.
 	 * 
-	 * @see {@link #setMaxLockCount(int)}
 	 * @return
 	 */
 	public int getMaxLockCount() {

@@ -5,8 +5,8 @@ import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 import com.amazonaws.services.sqs.model.Message;
 
 /**
- * Abstraction for a MessageReciever that pull messages from an AWS SQS queue to
- * be processed by a {@link MessageDrivenRunner}. The MessageReciever is
+ * Abstraction for a MessageReceiver that pull messages from an AWS SQS queue to
+ * be processed by a {@link MessageDrivenRunner}. The MessageReceiver is
  * expected to manage messages including pull, deleting, and refreshing message
  * visibility.
  * 

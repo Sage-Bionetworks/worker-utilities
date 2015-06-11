@@ -66,7 +66,7 @@ public class PollingMessageReceiverConfiguration {
 	}
 
 	/**
-	 * The runner that handles a message pull from the queue.
+	 * The runner that handles a message pulled from the queue.
 	 * @param runner
 	 */
 	public void setRunner(MessageDrivenRunner runner) {
