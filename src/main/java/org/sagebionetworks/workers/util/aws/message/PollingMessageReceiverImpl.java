@@ -1,5 +1,6 @@
 package org.sagebionetworks.workers.util.aws.message;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -9,6 +10,9 @@ import org.sagebionetworks.workers.util.progress.ThrottlingProgressCallback;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
+import com.amazonaws.services.sqs.model.DeleteMessageBatchRequest;
+import com.amazonaws.services.sqs.model.DeleteMessageBatchRequestEntry;
+import com.amazonaws.services.sqs.model.DeleteMessageBatchResult;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.PurgeQueueRequest;
@@ -52,7 +56,7 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 	public PollingMessageReceiverImpl(AmazonSQSClient amazonSQSClient,
 			PollingMessageReceiverConfiguration config) {
 		super();
-		if(amazonSQSClient == null){
+		if (amazonSQSClient == null) {
 			throw new IllegalArgumentException("AmazonSQSClient cannot be null");
 		}
 		this.amazonSQSClient = amazonSQSClient;
@@ -81,7 +85,8 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 					"PollingMessageReceiverConfiguration.semaphoreLockTimeoutSec must be at least "
 							+ MIN_SEMAPHORE_LOCK_TIMEOUT_SEC + " seconds.");
 		}
-		if (config.getSemaphoreLockTimeoutSec() < config.getMessageVisibilityTimeoutSec()) {
+		if (config.getSemaphoreLockTimeoutSec() < config
+				.getMessageVisibilityTimeoutSec()) {
 			throw new IllegalArgumentException(
 					"PollingMessageReceiverConfiguration.semaphoreLockTimeoutSec cannot be less than pollingMessageReceiverConfiguration.messageVisibilityTimeoutSec ");
 		}
@@ -98,7 +103,9 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 
 	/*
 	 * (non-Javadoc)
-	 * @see org.sagebionetworks.workers.util.progress.ProgressingRunner#run(org.sagebionetworks.workers.util.progress.ProgressCallback)
+	 * 
+	 * @see org.sagebionetworks.workers.util.progress.ProgressingRunner#run(org.
+	 * sagebionetworks.workers.util.progress.ProgressCallback)
 	 */
 	@Override
 	public void run(final ProgressCallback<Message> containerProgressCallback) {
@@ -161,13 +168,7 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 	 * @param message
 	 */
 	protected void deleteMessage(Message message) {
-		DeleteMessageRequest deleteRequest = new DeleteMessageRequest();
-		deleteRequest.setQueueUrl(this.messageQueueUrl);
-		deleteRequest.setReceiptHandle(message.getReceiptHandle());
-		if (log.isTraceEnabled()) {
-			log.trace("Deleting message: " + deleteRequest.toString());
-		}
-		this.amazonSQSClient.deleteMessage(deleteRequest);
+		this.amazonSQSClient.deleteMessage(new DeleteMessageRequest(this.messageQueueUrl, message.getReceiptHandle()));
 	}
 
 	/**
@@ -186,8 +187,41 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 
 	@Override
 	public void attemptToEmptyQueue() {
-		this.amazonSQSClient.purgeQueue(new PurgeQueueRequest(
-				this.messageQueueUrl));
+		/*
+		 * It would be nice to use {@link
+		 * com.amazonaws.services.sqs.AmazonSQSClient
+		 * #purgeQueue(PurgeQueueRequest)} however, Amazon only allows it to be
+		 * called every 60 seconds so it cannot be used for test that need to
+		 * start with an empty queue.  Therefore, we simply pull and delete messages.
+		 */
+		while(true){
+			ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest();
+			receiveMessageRequest.setMaxNumberOfMessages(10);
+			receiveMessageRequest.setWaitTimeSeconds(0);
+			receiveMessageRequest.setQueueUrl(messageQueueUrl);
+			ReceiveMessageResult results = this.amazonSQSClient.receiveMessage(receiveMessageRequest);
+			deleteMessageBatch(results.getMessages());
+			if(results.getMessages().isEmpty()){
+				//stop when there are no more messages.
+				break;
+			}
+		}
+
+	}
+	/**
+	 * Delete a batch of messages.
+	 * @param batch
+	 */
+	private void deleteMessageBatch(List<Message> batch){
+		if(batch != null){
+			if(!batch.isEmpty()){
+				List<DeleteMessageBatchRequestEntry> entryList = new LinkedList<DeleteMessageBatchRequestEntry>();
+				for(Message message: batch){
+					entryList.add(new DeleteMessageBatchRequestEntry(message.getMessageId(), message.getReceiptHandle()));
+				}
+				amazonSQSClient.deleteMessageBatch(new DeleteMessageBatchRequest(messageQueueUrl, entryList));
+			}
+		}
 	}
 
 }

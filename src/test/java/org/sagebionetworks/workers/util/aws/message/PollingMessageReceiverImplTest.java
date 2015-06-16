@@ -16,6 +16,7 @@ import org.sagebionetworks.workers.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
+import com.amazonaws.services.sqs.model.DeleteMessageBatchRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
@@ -223,5 +224,25 @@ public class PollingMessageReceiverImplTest {
 		 * The rest of the calls should be throttled.
 		 */
 		verify(mockAmazonSQSClient, times(2)).changeMessageVisibility(changeRequset);
+	}
+	
+	@Test
+	public void testAttemptToEmptyQueue(){
+		// Simulate two batches to delete
+		ReceiveMessageResult pageOne = new ReceiveMessageResult();
+		pageOne.setMessages(Arrays.asList(new Message().withMessageId("id1").withReceiptHandle("h1"), new Message().withMessageId("id2").withReceiptHandle("h2")));
+		ReceiveMessageResult pageTwo = new ReceiveMessageResult();
+		pageTwo.setMessages(Arrays.asList(new Message().withMessageId("id3").withReceiptHandle("h3")));
+		// page three is empty.
+		ReceiveMessageResult pageThree = new ReceiveMessageResult();
+		pageThree.setMessages(new LinkedList<Message>());
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(pageOne, pageTwo, pageThree);
+		
+		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(mockAmazonSQSClient, config);
+		
+		//call under test
+		receiver.attemptToEmptyQueue();
+		// each page should be deleted as a batch.
+		verify(mockAmazonSQSClient, times(2)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
 	}
 }
