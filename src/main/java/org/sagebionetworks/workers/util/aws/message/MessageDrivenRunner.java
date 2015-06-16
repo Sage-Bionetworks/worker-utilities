@@ -35,5 +35,5 @@ public interface MessageDrivenRunner {
 	 *             returned to the queue for future processing.
 	 */
 	public void run(ProgressCallback<Message> progressCallback, Message message)
-			throws RecoverableMessageException;
+			throws RecoverableMessageException, Exception;
 }

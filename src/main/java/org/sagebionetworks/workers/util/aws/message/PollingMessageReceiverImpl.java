@@ -12,10 +12,8 @@ import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageBatchRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageBatchRequestEntry;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchResult;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.PurgeQueueRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 
@@ -33,6 +31,11 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 	 * message to appear in the queue.
 	 */
 	public static int MAX_MESSAGE_POLL_TIME_SEC = 20;
+	/*
+	 * Used for message that failed but should be returned to the queue.  For this case
+	 * we want to be able to retry the message quickly, so it is set to 5 seconds. 
+	 */
+	public static int RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC = 5;
 	/*
 	 * Since this receiver does long polling for messages we need to ensure
 	 * semaphore lock timeouts are not less than poll time.
@@ -108,7 +111,7 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 	 * sagebionetworks.workers.util.progress.ProgressCallback)
 	 */
 	@Override
-	public void run(final ProgressCallback<Message> containerProgressCallback) {
+	public void run(final ProgressCallback<Message> containerProgressCallback) throws Exception {
 		ReceiveMessageRequest request = new ReceiveMessageRequest();
 		request.setMaxNumberOfMessages(1);
 		request.setQueueUrl(this.messageQueueUrl);
@@ -153,6 +156,8 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 					if (log.isDebugEnabled()) {
 						log.debug("Message will be returned to the queue", e);
 					}
+					// Ensure this message is visible again in 5 seconds
+					resetMessageVisibilityTimeout(message, RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
 				} finally {
 					if (deleteMessage) {
 						deleteMessage(message);
@@ -172,16 +177,25 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 	}
 
 	/**
-	 * Reset the visibility timeout of the given message. Called when progress
+	 * Reset the visibility timeout of the given message using the configured messageVisibilityTimeoutSec. Called when progress
 	 * is made for a given message.
 	 * 
 	 * @param message
 	 */
 	protected void resetMessageVisibilityTimeout(Message message) {
+		resetMessageVisibilityTimeout(message, this.messageVisibilityTimeoutSec);
+	}
+	
+	/**
+	 * Reset the visibility timeout of the given message to the provided using the provided visibilityTimeoutSec.
+	 * @param message
+	 * @param visibilityTimeoutSec
+	 */
+	protected void resetMessageVisibilityTimeout(Message message, int visibilityTimeoutSec) {
 		ChangeMessageVisibilityRequest changeRequest = new ChangeMessageVisibilityRequest();
 		changeRequest.setQueueUrl(this.messageQueueUrl);
 		changeRequest.setReceiptHandle(message.getReceiptHandle());
-		changeRequest.setVisibilityTimeout(this.messageVisibilityTimeoutSec);
+		changeRequest.setVisibilityTimeout(visibilityTimeoutSec);
 		this.amazonSQSClient.changeMessageVisibility(changeRequest);
 	}
 
