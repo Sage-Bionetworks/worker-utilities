@@ -11,7 +11,7 @@ public class MessageQueueConfiguration {
 
 	String queueName;
 	List<String> topicNamesToSubscribe;
-	boolean isEnabled;
+	boolean isEnabled = true;
 	String deadLetterQueueName;
 	Integer maxFailureCount;
 

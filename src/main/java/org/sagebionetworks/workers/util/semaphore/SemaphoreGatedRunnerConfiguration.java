@@ -1,6 +1,6 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import org.sagebionetworks.database.semaphore.ProgressCallback;
+import org.sagebionetworks.workers.util.progress.ProgressCallback;
 import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 
 /**

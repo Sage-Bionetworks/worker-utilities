@@ -17,6 +17,6 @@ public interface ProgressingRunner<T> {
 	 *            {@link ProgressCallback#progressMade(Object)} to notify the
 	 *            container that progress is being made.
 	 */
-	public void run(ProgressCallback<T> progressCallback);
+	public void run(ProgressCallback<T> progressCallback) throws Exception;
 
 }
