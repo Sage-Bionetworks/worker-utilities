@@ -1,5 +1,7 @@
 package org.sagebionetworks.workers.util.aws.message;
 
+import java.util.List;
+
 import org.sagebionetworks.workers.util.Gate;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 
@@ -94,6 +96,16 @@ public class MessageDrivenWorkerStackConfiguration {
 	 */
 	public void setGate(Gate gate) {
 		this.gate = gate;
+	}
+	
+	/**
+	 * An optional parameter used to subscribe the queue to receive messages
+	 * from each topic named in the list.
+	 * 
+	 * @param topicNamesToSubscribe
+	 */
+	public void setTopicNamesToSubscribe(List<String> topicNamesToSubscribe){
+		messageQueueConfiguration.setTopicNamesToSubscribe(topicNamesToSubscribe);
 	}
 
 }

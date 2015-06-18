@@ -11,6 +11,7 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.mockito.internal.matchers.Any;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -21,6 +22,11 @@ import org.sagebionetworks.workers.util.Gate;
 import org.sagebionetworks.workers.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sns.AmazonSNSClient;
+import com.amazonaws.services.sns.model.CreateTopicRequest;
+import com.amazonaws.services.sns.model.CreateTopicResult;
+import com.amazonaws.services.sns.model.ListSubscriptionsByTopicRequest;
+import com.amazonaws.services.sns.model.ListSubscriptionsByTopicResult;
+import com.amazonaws.services.sns.model.Subscription;
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
 import com.amazonaws.services.sqs.model.CreateQueueRequest;
@@ -41,6 +47,7 @@ public class MessageDrivenWorkerStackTest {
 
 	String queueUrl;
 	String queueArn;
+	String topicArn;
 	String token;
 	Message message;
 	MessageDrivenWorkerStackConfiguration config;
@@ -56,6 +63,7 @@ public class MessageDrivenWorkerStackTest {
 		// mock queue
 		queueUrl = "queueURL";
 		queueArn = "queueArn";
+		topicArn = "topicArn";
 		CreateQueueResult expectedRes = new CreateQueueResult()
 				.withQueueUrl(queueUrl);
 		when(mockSQSClient.createQueue(any(CreateQueueRequest.class)))
@@ -65,6 +73,18 @@ public class MessageDrivenWorkerStackTest {
 		GetQueueAttributesResult queAttributeResults = new GetQueueAttributesResult();
 		queAttributeResults.setAttributes(attMap);
 		when(mockSQSClient.getQueueAttributes(any(GetQueueAttributesRequest.class))).thenReturn(queAttributeResults);
+		CreateTopicResult createTopicResults = new CreateTopicResult();
+		createTopicResults.setTopicArn(topicArn);
+		when(mockSNSClient.createTopic(any(CreateTopicRequest.class))).thenReturn(createTopicResults);
+		ListSubscriptionsByTopicResult listSubscriptionResults = new ListSubscriptionsByTopicResult();
+		listSubscriptionResults.setNextToken(null);
+		Subscription subscription = new Subscription();
+		subscription.setTopicArn(topicArn);
+		subscription.setEndpoint(queueArn);
+		subscription.setProtocol(MessageQueueImpl.PROTOCOL_SQS);
+		listSubscriptionResults.setSubscriptions(Arrays.asList(subscription));
+		when(mockSNSClient.listSubscriptionsByTopic(any(ListSubscriptionsByTopicRequest.class))).thenReturn(listSubscriptionResults);
+		
 		// mock semaphore
 		token = "aToken";
 		when(mockSemaphore.attemptToAcquireLock(any(String.class),
@@ -149,6 +169,15 @@ public class MessageDrivenWorkerStackTest {
 		verify(mockSQSClient).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
 		
 		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
+	}
+	
+	@Test
+	public void testQueueWithTopic(){
+		config.setTopicNamesToSubscribe(Arrays.asList("SomeTopicName"));
+		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
+				mockSemaphore, mockSQSClient, mockSNSClient, config);
+		// the topic should be created if needed.
+		verify(mockSNSClient).createTopic(any(CreateTopicRequest.class));
 	}
 
 }
