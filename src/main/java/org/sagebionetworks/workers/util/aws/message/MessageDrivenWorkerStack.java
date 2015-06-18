@@ -1,6 +1,7 @@
 package org.sagebionetworks.workers.util.aws.message;
 
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
+import org.sagebionetworks.workers.util.GatedRunner;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerImpl;
 
@@ -23,8 +24,7 @@ import com.amazonaws.services.sqs.model.Message;
  */
 public class MessageDrivenWorkerStack implements Runnable {
 
-	SemaphoreGatedRunnerImpl<Message> semaphoreGatedRunner;
-	PollingMessageReceiverImpl pollingMessageReceiver;
+	Runnable runner;
 
 	public MessageDrivenWorkerStack(CountingSemaphore semaphore,
 			AmazonSQSClient awsSQSClient, AmazonSNSClient awsSNSClient,
@@ -44,13 +44,21 @@ public class MessageDrivenWorkerStack implements Runnable {
 		SemaphoreGatedRunnerConfiguration<Message> semaphoreGatedRunnerConfiguration = config
 				.getSemaphoreGatedRunnerConfiguration();
 		semaphoreGatedRunnerConfiguration.setRunner(pollingMessageReceiver);
-		semaphoreGatedRunner = new SemaphoreGatedRunnerImpl<Message>(semaphore,
+		SemaphoreGatedRunnerImpl<Message> semaphoreGatedRunner = new SemaphoreGatedRunnerImpl<Message>(semaphore,
 				config.getSemaphoreGatedRunnerConfiguration());
+
+		if(config.getGate() != null){
+			// When a gate is provided a GatedRunner will be the main runner.
+			runner = new GatedRunner(config.getGate(), semaphoreGatedRunner);
+		}else{
+			// Without a gate, the semaphoreGatedRunner will be the main runner.
+			runner = semaphoreGatedRunner;
+		}
 	}
 
 	@Override
 	public void run() {
-		semaphoreGatedRunner.run();
+		runner.run();
 	}
 
 }

@@ -1,5 +1,6 @@
 package org.sagebionetworks.workers.util.aws.message;
 
+import org.sagebionetworks.workers.util.Gate;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 
 import com.amazonaws.services.sqs.model.Message;
@@ -13,6 +14,7 @@ public class MessageDrivenWorkerStackConfiguration {
 	MessageQueueConfiguration messageQueueConfiguration;
 	PollingMessageReceiverConfiguration pollingMessageReceiverConfiguration;
 	SemaphoreGatedRunnerConfiguration<Message> semaphoreGatedRunnerConfiguration;
+	Gate gate;
 
 	public MessageDrivenWorkerStackConfiguration() {
 		messageQueueConfiguration = new MessageQueueConfiguration();
@@ -76,6 +78,22 @@ public class MessageDrivenWorkerStackConfiguration {
 		semaphoreGatedRunnerConfiguration.setLockTimeoutSec(timeoutSec);
 		pollingMessageReceiverConfiguration.setMessageVisibilityTimeoutSec(timeoutSec);
 		pollingMessageReceiverConfiguration.setSemaphoreLockTimeoutSec(timeoutSec);
+	}
+	
+	/**
+	 * An optional parameter. When set, each run will only occur if the provided {@link Gate#canRun()} returns true.
+	 * @return
+	 */
+	public Gate getGate() {
+		return gate;
+	}
+
+	/**
+	 * An optional parameter. When set, each run will only occur if the provided {@link Gate#canRun()} returns true.
+	 * @param gate
+	 */
+	public void setGate(Gate gate) {
+		this.gate = gate;
 	}
 
 }
