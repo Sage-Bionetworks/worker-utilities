@@ -172,7 +172,7 @@ public class MessageDrivenWorkerStackTest {
 	}
 	
 	@Test
-	public void testQueueWithWithTopic(){
+	public void testQueueWithTopic(){
 		config.setTopicNamesToSubscribe(Arrays.asList("SomeTopicName"));
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, mockSNSClient, config);
