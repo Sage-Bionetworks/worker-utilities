@@ -1,17 +1,15 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.workers.util.progress.ProgressCallback;
+import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 import org.sagebionetworks.workers.util.progress.ThrottlingProgressCallback;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchRequest;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchRequestEntry;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
@@ -21,7 +19,7 @@ import com.amazonaws.services.sqs.model.ReceiveMessageResult;
  * A MessageReceiver that uses long polling to fetch messages from AWS SQS.
  * 
  */
-public class PollingMessageReceiverImpl implements MessageReceiver {
+public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 
 	private static final Logger log = LogManager
 			.getLogger(PollingMessageReceiverImpl.class);
@@ -30,7 +28,7 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 	 * The maximum amount of time in seconds that this receiver will wait for a
 	 * message to appear in the queue.
 	 */
-	public static int MAX_MESSAGE_POLL_TIME_SEC = 20;
+	public static int MAX_MESSAGE_POLL_TIME_SEC = 2;
 	/*
 	 * Used for message that failed but should be returned to the queue.  For this case
 	 * we want to be able to retry the message quickly, so it is set to 5 seconds. 
@@ -198,44 +196,4 @@ public class PollingMessageReceiverImpl implements MessageReceiver {
 		changeRequest.setVisibilityTimeout(visibilityTimeoutSec);
 		this.amazonSQSClient.changeMessageVisibility(changeRequest);
 	}
-
-	@Override
-	public void attemptToEmptyQueue() {
-		/*
-		 * It would be nice to use {@link
-		 * com.amazonaws.services.sqs.AmazonSQSClient
-		 * #purgeQueue(PurgeQueueRequest)} however, Amazon only allows it to be
-		 * called every 60 seconds so it cannot be used for test that need to
-		 * start with an empty queue.  Therefore, we simply pull and delete messages.
-		 */
-		while(true){
-			ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest();
-			receiveMessageRequest.setMaxNumberOfMessages(10);
-			receiveMessageRequest.setWaitTimeSeconds(0);
-			receiveMessageRequest.setQueueUrl(messageQueueUrl);
-			ReceiveMessageResult results = this.amazonSQSClient.receiveMessage(receiveMessageRequest);
-			deleteMessageBatch(results.getMessages());
-			if(results.getMessages().isEmpty()){
-				//stop when there are no more messages.
-				break;
-			}
-		}
-
-	}
-	/**
-	 * Delete a batch of messages.
-	 * @param batch
-	 */
-	private void deleteMessageBatch(List<Message> batch){
-		if(batch != null){
-			if(!batch.isEmpty()){
-				List<DeleteMessageBatchRequestEntry> entryList = new LinkedList<DeleteMessageBatchRequestEntry>();
-				for(Message message: batch){
-					entryList.add(new DeleteMessageBatchRequestEntry(message.getMessageId(), message.getReceiptHandle()));
-				}
-				amazonSQSClient.deleteMessageBatch(new DeleteMessageBatchRequest(messageQueueUrl, entryList));
-			}
-		}
-	}
-
 }

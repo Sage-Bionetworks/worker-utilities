@@ -1,14 +1,19 @@
 package org.sagebionetworks.workers.util.aws.message;
 
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.util.Arrays;
 import java.util.LinkedList;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -16,7 +21,6 @@ import org.sagebionetworks.workers.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
@@ -266,31 +270,4 @@ public class PollingMessageReceiverImplTest {
 				changeRequset);
 	}
 
-	@Test
-	public void testAttemptToEmptyQueue() {
-		// Simulate two batches to delete
-		ReceiveMessageResult pageOne = new ReceiveMessageResult();
-		pageOne.setMessages(Arrays.asList(new Message().withMessageId("id1")
-				.withReceiptHandle("h1"), new Message().withMessageId("id2")
-				.withReceiptHandle("h2")));
-		ReceiveMessageResult pageTwo = new ReceiveMessageResult();
-		pageTwo.setMessages(Arrays.asList(new Message().withMessageId("id3")
-				.withReceiptHandle("h3")));
-		// page three is empty.
-		ReceiveMessageResult pageThree = new ReceiveMessageResult();
-		pageThree.setMessages(new LinkedList<Message>());
-		when(
-				mockAmazonSQSClient
-						.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(pageOne, pageTwo, pageThree);
-
-		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
-				mockAmazonSQSClient, config);
-
-		// call under test
-		receiver.attemptToEmptyQueue();
-		// each page should be deleted as a batch.
-		verify(mockAmazonSQSClient, times(2)).deleteMessageBatch(
-				any(DeleteMessageBatchRequest.class));
-	}
 }
