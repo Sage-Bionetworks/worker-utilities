@@ -58,10 +58,12 @@ public class PollingMessageReceiverImplTest {
 		message = new Message();
 		message.setReceiptHandle("handle");
 		results.setMessages(Arrays.asList(message));
+		ReceiveMessageResult emptyResults = new ReceiveMessageResult();
+		emptyResults.setMessages(new LinkedList<Message>());
 		when(
 				mockAmazonSQSClient
 						.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(results);
+				.thenReturn(results, emptyResults);
 
 		config = new PollingMessageReceiverConfiguration();
 		config.setHasQueueUrl(mockHasQueueUrl);
