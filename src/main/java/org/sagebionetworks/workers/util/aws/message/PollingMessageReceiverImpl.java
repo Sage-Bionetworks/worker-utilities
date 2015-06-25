@@ -128,7 +128,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 		request.setMaxNumberOfMessages(1);
 		request.setQueueUrl(this.messageQueueUrl);
 		request.setVisibilityTimeout(this.messageVisibilityTimeoutSec);
-		request.setWaitTimeSeconds(MAX_MESSAGE_POLL_TIME_SEC);
+		request.setWaitTimeSeconds(0);
 		// Poll for one message.
 		ReceiveMessageResult results = this.amazonSQSClient
 				.receiveMessage(request);
