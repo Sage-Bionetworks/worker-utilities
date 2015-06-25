@@ -110,6 +110,20 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	 */
 	@Override
 	public void run(final ProgressCallback<Message> containerProgressCallback) throws Exception {
+		Message message = null;
+		do {
+			message = pollForMessage();
+			if(message != null){
+				processMessage(containerProgressCallback, message);
+			}
+		} while (message != null);
+	}
+	
+	/**
+	 * Poll for a single message.
+	 * @return
+	 */
+	private Message pollForMessage(){
 		ReceiveMessageRequest request = new ReceiveMessageRequest();
 		request.setMaxNumberOfMessages(1);
 		request.setQueueUrl(this.messageQueueUrl);
@@ -131,36 +145,50 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 					throw new IllegalStateException(
 							"Message list contains a null message");
 				}
-				// before we pass the message to the runner refresh the progress
-				containerProgressCallback.progressMade(message);
-				boolean deleteMessage = true;
-				try {
-					// Let the runner handle the message.
-					runner.run(new ThrottlingProgressCallback<Message>(
-							new ProgressCallback<Message>() {
+				return message;
+			}
+		}
+		// no message for you
+		return null;
+	}
 
-								@Override
-								public void progressMade(Message t) {
-									// let the container know progress was made
-									containerProgressCallback
-											.progressMade(message);
-									resetMessageVisibilityTimeout(message);
-								}
-							}, progressThrottleFrequencyMS), message);
+	/**
+	 * Process a single message.
+	 * @param containerProgressCallback
+	 * @param message
+	 * @throws Exception
+	 */
+	private void processMessage(
+			final ProgressCallback<Message> containerProgressCallback,
+			final Message message) throws Exception {
+		// before we pass the message to the runner refresh the progress
+		containerProgressCallback.progressMade(message);
+		boolean deleteMessage = true;
+		try {
+			// Let the runner handle the message.
+			runner.run(new ThrottlingProgressCallback<Message>(
+					new ProgressCallback<Message>() {
 
-				} catch (RecoverableMessageException e) {
-					// this is the only case where we do not delete the message.
-					deleteMessage = false;
-					if (log.isDebugEnabled()) {
-						log.debug("Message will be returned to the queue", e);
-					}
-					// Ensure this message is visible again in 5 seconds
-					resetMessageVisibilityTimeout(message, RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
-				} finally {
-					if (deleteMessage) {
-						deleteMessage(message);
-					}
-				}
+						@Override
+						public void progressMade(Message t) {
+							// let the container know progress was made
+							containerProgressCallback
+									.progressMade(message);
+							resetMessageVisibilityTimeout(message);
+						}
+					}, progressThrottleFrequencyMS), message);
+
+		} catch (RecoverableMessageException e) {
+			// this is the only case where we do not delete the message.
+			deleteMessage = false;
+			if (log.isDebugEnabled()) {
+				log.debug("Message will be returned to the queue", e);
+			}
+			// Ensure this message is visible again in 5 seconds
+			resetMessageVisibilityTimeout(message, RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
+		} finally {
+			if (deleteMessage) {
+				deleteMessage(message);
 			}
 		}
 	}

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 
 import org.junit.Before;
@@ -97,8 +98,10 @@ public class MessageDrivenWorkerStackTest {
 		message = new Message();
 		message.setReceiptHandle("handle");
 		results.setMessages(Arrays.asList(message));
+		ReceiveMessageResult emptyResults = new ReceiveMessageResult();
+		emptyResults.setMessages(new LinkedList<Message>());
 		when(mockSQSClient.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(results);
+				.thenReturn(results, emptyResults);
 
 		// default config
 		config = new MessageDrivenWorkerStackConfiguration();
