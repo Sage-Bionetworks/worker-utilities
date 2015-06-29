@@ -182,5 +182,15 @@ public class MessageDrivenWorkerStackTest {
 		// the topic should be created if needed.
 		verify(mockSNSClient).createTopic(any(CreateTopicRequest.class));
 	}
+	
+	@Test
+	public void testSetDeadLetter(){
+		config.setDeadLetterQueueName("deadletters");
+		config.setDeadLetterMaxFailureCount(5);
+		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
+				mockSemaphore, mockSQSClient, mockSNSClient, config);
+		// the topic should be created if needed.
+		verify(mockSQSClient).createQueue(new CreateQueueRequest("deadletters"));	
+	}
 
 }
