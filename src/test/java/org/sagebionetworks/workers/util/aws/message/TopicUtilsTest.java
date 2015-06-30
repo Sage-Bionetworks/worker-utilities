@@ -21,8 +21,8 @@ public class TopicUtilsTest {
 	
 	@Test
 	public void generateSourceArnWithValidLists() {
-		assertEquals("one", TopicUtils.generateSourceArn(Arrays.asList("one")));
-		assertEquals("[\"one\", \"two\"]", TopicUtils.generateSourceArn(Arrays.asList("one","two")));
+		assertEquals("\"one\"", TopicUtils.generateSourceArn(Arrays.asList("one")));
+		assertEquals("[ \"one\", \"two\" ]", TopicUtils.generateSourceArn(Arrays.asList("one","two")));
 	}
 	
 	@Test

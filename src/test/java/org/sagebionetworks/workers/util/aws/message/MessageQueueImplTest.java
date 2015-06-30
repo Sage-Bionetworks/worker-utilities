@@ -129,7 +129,7 @@ public class MessageQueueImplTest {
 		verify(mockSNSClient).subscribe(request);
 		
 		// verify the the policy is set.
-		String permissionString = MessageQueueImpl.createGrantPolicyTopicToQueueString(queueArn, newTopicArn);
+		String permissionString = MessageQueueImpl.createGrantPolicyTopicToQueueString(queueArn, "\""+newTopicArn+"\"");
 		Map<String, String> map = new HashMap<String, String>();
 		map.put(POLICY_KEY, permissionString);
 		SetQueueAttributesRequest setAttrRequest = new SetQueueAttributesRequest()

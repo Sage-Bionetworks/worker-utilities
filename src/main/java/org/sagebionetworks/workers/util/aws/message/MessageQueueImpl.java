@@ -50,7 +50,7 @@ public class MessageQueueImpl implements MessageQueue {
 	private Logger logger = LogManager.getLogger(MessageQueueImpl.class);
 
 	// The first argument is the ARN of the queue, and the second is the ARN of the topic.
-	public static final String GRAN_SET_MESSAGE_TEMPLATE = "{ \"Id\":\"GrantRepoTopicSendMessage\", \"Statement\": [{ \"Sid\":\"1\",  \"Resource\": \"%1$s\", \"Effect\": \"Allow\", \"Action\": \"SQS:SendMessage\", \"Condition\": {\"ArnEquals\": {\"aws:SourceArn\": \"%2$s\"}}, \"Principal\": {\"AWS\": \"*\"}}]}";
+	public static final String GRAN_SET_MESSAGE_TEMPLATE = "{ \"Id\":\"GrantRepoTopicSendMessage\", \"Statement\": [{ \"Sid\":\"1\",  \"Resource\": \"%1$s\", \"Effect\": \"Allow\", \"Action\": \"SQS:SendMessage\", \"Condition\": {\"ArnEquals\": {\"aws:SourceArn\": %2$s}}, \"Principal\": {\"AWS\": \"*\"}}]}";
 
 	private AmazonSQSClient awsSQSClient;
 
@@ -290,7 +290,7 @@ public class MessageQueueImpl implements MessageQueue {
 		GetQueueAttributesResult attrResult = this.awsSQSClient.getQueueAttributes(attrRequest);
 		String policyString =  attrResult.getAttributes().get(POLICY_KEY);
 		this.logger.info("Currently policy: " + policyString);
-		if (policyString == null || TopicUtils.containsAllTopics(policyString, topicArns)) {
+		if (policyString == null || !TopicUtils.containsAllTopics(policyString, topicArns)) {
 			this.logger.info("Policy not set to grant the topic write permission to the queue. Adding a policy now...");
 			// Now we need to grant the topic permission to send messages to the queue.
 			String permissionString = createGrantPolicyTopicToQueueString(queueArn, TopicUtils.generateSourceArn(topicArns));

@@ -35,16 +35,18 @@ public class TopicUtils {
 		if (topicsArns == null || topicsArns.size() < 1) {
 			throw new IllegalArgumentException();
 		}
-		if (topicsArns.size() == 1) {
-			return topicsArns.get(0);
-		}
+		
 		char quote = '"';
 		String comma = ", ";
-		String sourceArn = "[" + quote + topicsArns.get(0) + quote;
+		
+		if (topicsArns.size() == 1) {
+			return quote + topicsArns.get(0) + quote;
+		}
+		String sourceArn = "[ " + quote + topicsArns.get(0) + quote;
 		for (int i = 1; i < topicsArns.size(); i++) {
 			sourceArn += comma + quote + topicsArns.get(i) + quote;
 		}
-		sourceArn += "]";
+		sourceArn += " ]";
 		return sourceArn;
 	}
 }
