@@ -1,5 +1,6 @@
 package org.sagebionetworks.workers.util.aws.message;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ public class MessageQueueImpl implements MessageQueue {
 	private Logger logger = LogManager.getLogger(MessageQueueImpl.class);
 
 	// The first argument is the ARN of the queue, and the second is the ARN of the topic.
-	public static final String GRAN_SET_MESSAGE_TEMPLATE = "{ \"Id\":\"GrantRepoTopicSendMessage\", \"Statement\": [{ \"Sid\":\"1\",  \"Resource\": \"%1$s\", \"Effect\": \"Allow\", \"Action\": \"SQS:SendMessage\", \"Condition\": {\"ArnEquals\": {\"aws:SourceArn\": \"%2$s\"}}, \"Principal\": {\"AWS\": \"*\"}}]}";
+	public static final String GRAN_SET_MESSAGE_TEMPLATE = "{ \"Id\":\"GrantRepoTopicSendMessage\", \"Statement\": [{ \"Sid\":\"1\",  \"Resource\": \"%1$s\", \"Effect\": \"Allow\", \"Action\": \"SQS:SendMessage\", \"Condition\": {\"ArnEquals\": {\"aws:SourceArn\": %2$s}}, \"Principal\": {\"AWS\": \"*\"}}]}";
 
 	private AmazonSQSClient awsSQSClient;
 
@@ -176,39 +177,43 @@ public class MessageQueueImpl implements MessageQueue {
 	}
 	
 	/**
-	 * Create each topic in the list (if needed), grant access access to publish
-	 * from the topics to the queue, and subscribe the queue to the topic.
+	 * Create each topic in the list (if needed), subscribe the queue to the topic,
+	 * and grant access access to publish from the topics to the queue.
 	 * 
 	 * @param queueArn
 	 * @param queueUrl
 	 * @param topicsToSubscribe List of topic names to register this queue with.
 	 */
-	private void createAndGrandAccessToTopics(String queueArn, String queueUrl, List<String> topicsToSubscribe) {
-		if (topicsToSubscribe != null) {
-			for (String topicName : topicsToSubscribe) {
-				createAndGrandAccessToTopic(queueArn, queueUrl, topicName);
-			}
-		} 
-	}
-	
-	/**
-	 * Create a topic (if needed), grant access access to publish from the
-	 * topics to the queue, and subscribe the queue to the topic.
-	 * 
-	 * @param queueArn
-	 * @param queueUrl
-	 * @param type
-	 */
-	protected void createAndGrandAccessToTopic(String queueArn, String queueUrl, String topicName){
-		CreateTopicRequest ctRequest = new CreateTopicRequest(topicName);
-		CreateTopicResult topicResult = this.awsSNSClient.createTopic(ctRequest);
-		final String topicArn = topicResult.getTopicArn();
-		final Subscription subscription = subscribeQueueToTopicIfNeeded(topicArn, queueArn);
-		if (subscription == null) {
-			throw new IllegalStateException("Failed to subscribe queue (" + queueArn + ") to topic (" + topicArn + ")");
+	protected void createAndGrandAccessToTopics(String queueArn, String queueUrl, List<String> topicsToSubscribe) {
+		if (topicsToSubscribe == null) {
+			return;
 		}
-		// Make sure the topic has the permission it needs
-		grantPolicyIfNeeded(topicArn, queueArn, queueUrl);
+		List<String> topicArns = createTopics(topicsToSubscribe);
+		for (String topicArn : topicArns) {
+			final Subscription subscription = subscribeQueueToTopicIfNeeded(topicArn, queueArn);
+			if (subscription == null) {
+				throw new IllegalStateException("Failed to subscribe queue (" + queueArn + ") to topic (" + topicArn + ")");
+			}
+		}
+		// Make sure the topics has the permission it needs
+		grantPolicyIfNeeded(topicArns, queueArn, queueUrl);
+	}
+		
+	/**
+	 * Creates each topic if needed and returns the topic ARNs.
+	 * 	
+	 * @param topicsToSubscribe
+	 * @return a list of topic ARNs
+	 */
+	private List<String> createTopics(List<String> topicsToSubscribe) {
+		List<String> arns = new ArrayList<String>();
+		for (String topicName : topicsToSubscribe) {
+			CreateTopicRequest ctRequest = new CreateTopicRequest(topicName);
+			CreateTopicResult topicResult = this.awsSNSClient.createTopic(ctRequest);
+			final String topicArn = topicResult.getTopicArn();
+			arns.add(topicArn);
+		}
+		return arns;
 	}
 
 	/**
@@ -268,28 +273,27 @@ public class MessageQueueImpl implements MessageQueue {
 	 * Grant the topic permission to write to the queue if it does not already
 	 * have such a permission.
 	 * 
-	 * @param topicArn
+	 * @param topicsToSubscribe
 	 * @param queueArn
 	 * @param queueUrl
 	 */
-	private void grantPolicyIfNeeded(final String topicArn, final String queueArn, final String queueUrl) {
-		if(topicArn == null){
+	protected void grantPolicyIfNeeded(final List<String> topicArns, final String queueArn, final String queueUrl) {
+		if(topicArns == null){
 			throw new IllegalArgumentException("topicArn cannot be null");
 		}
 		if(queueArn == null){
 			throw new IllegalArgumentException("queueArn cannot be null");
 		}
-		String arnToGrant = topicArn;
 		GetQueueAttributesRequest attrRequest = new GetQueueAttributesRequest()
 				.withQueueUrl(queueUrl)
 				.withAttributeNames(POLICY_KEY);
 		GetQueueAttributesResult attrResult = this.awsSQSClient.getQueueAttributes(attrRequest);
 		String policyString =  attrResult.getAttributes().get(POLICY_KEY);
 		this.logger.info("Currently policy: " + policyString);
-		if (policyString == null || policyString.indexOf(arnToGrant) < 1) {
+		if (policyString == null || !TopicUtils.containsAllTopics(policyString, topicArns)) {
 			this.logger.info("Policy not set to grant the topic write permission to the queue. Adding a policy now...");
 			// Now we need to grant the topic permission to send messages to the queue.
-			String permissionString = createGrantPolicyTopicToQueueString(queueArn, arnToGrant);
+			String permissionString = createGrantPolicyTopicToQueueString(queueArn, TopicUtils.generateSourceArn(topicArns));
 			Map<String, String> map = new HashMap<String, String>();
 			map.put(POLICY_KEY, permissionString);
 			this.logger.info("Setting policy to: "+permissionString);

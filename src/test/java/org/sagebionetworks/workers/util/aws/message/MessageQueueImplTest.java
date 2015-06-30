@@ -6,7 +6,6 @@ import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 
 import org.junit.Before;
@@ -91,10 +90,13 @@ public class MessageQueueImplTest {
 	}
 	
 	@Test
-	public void testCreateAndGrandAccessToTopic(){
+	public void testCreateAndGrantAccessToTopic(){
 		MessageQueueImpl msgQImpl = new MessageQueueImpl(mockSQSClient, mockSNSClient, config);
+		
+		// mockSQSClient.setQueueAttributes() is called twice while the msgQImpl is initiated
+		verify(mockSQSClient, times(2)).setQueueAttributes((SetQueueAttributesRequest) any());
+		
 		reset(mockSNSClient);
-		String topicName = "aNewTopic";
 		String newTopicName = "newTopicName";
 		String newTopicArn = "newTopicArn";
 		// creates the topic an fetches the topic ARN.
@@ -122,12 +124,12 @@ public class MessageQueueImplTest {
 		when(mockSNSClient.listSubscriptionsByTopic(any(ListSubscriptionsByTopicRequest.class))).thenReturn(fristSubscriptionResutls, secondSubscriptionResutls);
 
 		// call under test.
-		msgQImpl.createAndGrandAccessToTopic(queueArn, queueUrl, newTopicName);
+		msgQImpl.createAndGrandAccessToTopics(queueArn, queueUrl, Arrays.asList(newTopicName));
 		SubscribeRequest request = new SubscribeRequest(newTopicArn, PROTOCOL_SQS, queueArn);
 		verify(mockSNSClient).subscribe(request);
 		
 		// verify the the policy is set.
-		String permissionString = MessageQueueImpl.createGrantPolicyTopicToQueueString(queueArn, newTopicArn);
+		String permissionString = MessageQueueImpl.createGrantPolicyTopicToQueueString(queueArn, "\""+newTopicArn+"\"");
 		Map<String, String> map = new HashMap<String, String>();
 		map.put(POLICY_KEY, permissionString);
 		SetQueueAttributesRequest setAttrRequest = new SetQueueAttributesRequest()
