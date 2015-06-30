@@ -284,7 +284,6 @@ public class MessageQueueImpl implements MessageQueue {
 		if(queueArn == null){
 			throw new IllegalArgumentException("queueArn cannot be null");
 		}
-		//String arnToGrant = topicsToSubscribe;
 		GetQueueAttributesRequest attrRequest = new GetQueueAttributesRequest()
 				.withQueueUrl(queueUrl)
 				.withAttributeNames(POLICY_KEY);
