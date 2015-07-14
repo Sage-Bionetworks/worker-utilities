@@ -3,6 +3,7 @@ package org.sagebionetworks.workers.util.semaphore;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
+import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
 import org.sagebionetworks.workers.util.progress.ProgressCallback;
 import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 import org.sagebionetworks.workers.util.progress.ThrottlingProgressCallback;
@@ -77,7 +78,14 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 					semaphore.releaseLock(this.lockKey, lockToken);
 				}
 			}
-		} catch (Throwable e) {
+		}catch (LockReleaseFailedException e){
+			/*
+			 * Lock release failures usually mean workers are not correctly
+			 * reporting progress and the semaphore is not working as expected
+			 * so this exception is thrown
+			 */
+			throw e;
+		}catch (Throwable e) {
 			log.error(e);
 		}
 	}

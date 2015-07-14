@@ -16,6 +16,7 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
+import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
 import org.sagebionetworks.workers.util.progress.ProgressCallback;
 import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 
@@ -123,5 +124,14 @@ public class SemaphoreGatedRunnerImplTest {
 		verify(mockSemaphore, times(1)).refreshLockTimeout(lockKey, atoken, lockTimeoutSec);
 		// The lock should get released.
 		verify(mockSemaphore).releaseLock(lockKey, atoken);
+	}
+	
+	@Test (expected=LockReleaseFailedException.class)
+	public void testLockReleaseFailures() throws Exception{
+		String atoken = "atoken";
+		when(mockSemaphore.attemptToAcquireLock(lockKey, lockTimeoutSec, maxLockCount)).thenReturn(atoken);
+		doThrow(new LockReleaseFailedException("Failed to release the lock!")).when(mockSemaphore).releaseLock(lockKey,  atoken);
+		// start the gate
+		gate.run();
 	}
 }
