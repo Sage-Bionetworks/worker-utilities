@@ -27,7 +27,11 @@ public class GatedRunner implements Runnable {
 	@Override
 	public void run() {
 		if (gate.canRun()) {
-			runner.run();
+			try {
+				runner.run();
+			} catch (Exception e) {
+				gate.runFailed(e);
+			}
 		}
 	}
 

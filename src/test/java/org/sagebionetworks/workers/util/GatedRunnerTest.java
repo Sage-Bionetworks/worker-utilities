@@ -1,6 +1,6 @@
 package org.sagebionetworks.workers.util;
 
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,5 +33,16 @@ public class GatedRunnerTest {
 		when(mockGate.canRun()).thenReturn(false);
 		gatedRunner.run();
 		verify(mockRunner, never()).run();
+	}
+	
+	@Test
+	public void testFailure(){
+		when(mockGate.canRun()).thenReturn(true);
+		Exception error = new RuntimeException("Something went wrong");
+		doThrow(error).when(mockRunner).run();
+		// call under test
+		gatedRunner.run();
+		verify(mockRunner).run();
+		verify(mockGate).runFailed(error);
 	}
 }
