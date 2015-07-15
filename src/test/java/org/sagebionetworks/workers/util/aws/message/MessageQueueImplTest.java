@@ -2,6 +2,8 @@ package org.sagebionetworks.workers.util.aws.message;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyList;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
@@ -70,16 +72,40 @@ public class MessageQueueImplTest {
 		config.setEnabled(true);
 		config.setDeadLetterQueueName("deadLetterQueueName");
 		config.setMaxFailureCount(5);
+		config.setDefaultMessageVisibilityTimeoutSec(60);
+		
+		when(mockSQSClient.getQueueAttributes(anyString(), anyList())).thenReturn(new GetQueueAttributesResult().addAttributesEntry("VisibilityTimeout", "60"));
 	}
 
 	@Test
-	public void testCreateQueueOnly() {
+	public void testCreateQueueOnlyExists() {
 		config = new MessageQueueConfiguration();
 		String queueName = "queueName";
 		config.setQueueName(queueName);
 		config.setEnabled(true);
+		config.setDefaultMessageVisibilityTimeoutSec(35);
+		when(mockSQSClient.getQueueAttributes(anyString(), anyList())).thenReturn(new GetQueueAttributesResult().addAttributesEntry("VisibilityTimeout", config.getDefaultMessageVisibilityTimeoutSec().toString()));
 		MessageQueueImpl msgQImpl = new MessageQueueImpl(mockSQSClient, mockSNSClient, config);
 		assertEquals(queueUrl, msgQImpl.getQueueUrl());
+		verify(mockSQSClient).createQueue(new CreateQueueRequest(queueName));
+		// The timeout should already be set for this queue.
+		verify(mockSQSClient, never()).setQueueAttributes(any(SetQueueAttributesRequest.class));
+	}
+	
+	@Test
+	public void testCreateQueueOnlyDoesNotExist() {
+		config = new MessageQueueConfiguration();
+		String queueName = "queueName";
+		config.setQueueName(queueName);
+		config.setEnabled(true);
+		config.setDefaultMessageVisibilityTimeoutSec(35);
+		when(mockSQSClient.getQueueAttributes(anyString(), anyList())).thenReturn(new GetQueueAttributesResult().addAttributesEntry("VisibilityTimeout", "30"));
+
+		MessageQueueImpl msgQImpl = new MessageQueueImpl(mockSQSClient, mockSNSClient, config);
+		assertEquals(queueUrl, msgQImpl.getQueueUrl());
+		verify(mockSQSClient).createQueue(new CreateQueueRequest(queueName));
+		// The timeout should be set for this case
+		verify(mockSQSClient).setQueueAttributes(new SetQueueAttributesRequest().withQueueUrl(queueUrl).addAttributesEntry("VisibilityTimeout", "35"));
 	}
 	
 	@Test
@@ -144,6 +170,12 @@ public class MessageQueueImplTest {
 		String expectedPolicy = "{\"maxReceiveCount\":\"5\", \"deadLetterTargetArn\":\"deadLetterQueueArn\"}";
 		String s = msgQImpl.getRedrivePolicy(5, "deadLetterQueueArn");
 		assertEquals(expectedPolicy, s);
+	}
+	
+	@Test (expected=IllegalArgumentException.class)
+	public void testDefaultVisibilityTimeoutNull(){
+		config.setDefaultMessageVisibilityTimeoutSec(null);
+		MessageQueueImpl msgQImpl = new MessageQueueImpl(mockSQSClient, mockSNSClient, config);
 	}
 	
 	@Test

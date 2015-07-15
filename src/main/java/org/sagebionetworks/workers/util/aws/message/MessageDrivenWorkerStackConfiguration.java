@@ -78,6 +78,7 @@ public class MessageDrivenWorkerStackConfiguration {
 	 */
 	public void setSemaphoreLockAndMessageVisibilityTimeoutSec(Integer timeoutSec){
 		semaphoreGatedRunnerConfiguration.setLockTimeoutSec(timeoutSec);
+		messageQueueConfiguration.setDefaultMessageVisibilityTimeoutSec(timeoutSec);
 		pollingMessageReceiverConfiguration.setMessageVisibilityTimeoutSec(timeoutSec);
 		pollingMessageReceiverConfiguration.setSemaphoreLockTimeoutSec(timeoutSec);
 	}
