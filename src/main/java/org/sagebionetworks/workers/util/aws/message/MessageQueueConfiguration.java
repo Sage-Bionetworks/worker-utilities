@@ -14,6 +14,7 @@ public class MessageQueueConfiguration {
 	boolean isEnabled = true;
 	String deadLetterQueueName;
 	Integer maxFailureCount;
+	Integer defaultMessageVisibilityTimeoutSec;
 
 	public MessageQueueConfiguration() {
 	}
@@ -116,6 +117,23 @@ public class MessageQueueConfiguration {
 	 */
 	public Integer getMaxFailureCount() {
 		return maxFailureCount;
+	}
+
+	/**
+	 * The default messages visibility timeout in seconds for the queue.
+	 * 
+	 * @param timeoutSec
+	 */
+	public void setDefaultMessageVisibilityTimeoutSec(Integer timeoutSec) {
+		this.defaultMessageVisibilityTimeoutSec = timeoutSec;
+	}
+
+	/**
+	 * The default messages visibility timeout in seconds for the queue.
+	 * @return
+	 */
+	public Integer getDefaultMessageVisibilityTimeoutSec() {
+		return defaultMessageVisibilityTimeoutSec;
 	}
 
 }

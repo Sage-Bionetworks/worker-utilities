@@ -1,6 +1,7 @@
 package org.sagebionetworks.workers.util.aws.message;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,8 @@ import com.amazonaws.services.sqs.model.SetQueueAttributesRequest;
  */
 public class MessageQueueImpl implements MessageQueue {
 
+	public static final String VISIBILITY_TIMEOUT_KEY = "VisibilityTimeout";
+
 	public static final String POLICY_KEY = "Policy";
 
 	public static final String REDRIVE_POLICY_KEY = "RedrivePolicy";
@@ -63,6 +66,7 @@ public class MessageQueueImpl implements MessageQueue {
 	private final Integer maxFailureCount;
 	private final String deadLetterQueueName;
 	private String deadLetterQueueUrl;
+	private final Integer defaultMessageVisibilityTimeoutSec;
 	
 	/**
 	 * @param awsSQSClient An AmazonSQSClient configured with credentials.
@@ -76,8 +80,12 @@ public class MessageQueueImpl implements MessageQueue {
 		this.awsSNSClient = awsSNSClient;
 		this.isEnabled = config.isEnabled();
 		this.queueName = config.getQueueName();
+		this.defaultMessageVisibilityTimeoutSec = config.getDefaultMessageVisibilityTimeoutSec();
 		if (this.queueName == null) {
 			throw new IllegalArgumentException("QueueName cannot be null");
+		}
+		if(this.defaultMessageVisibilityTimeoutSec == null){
+			throw new IllegalArgumentException("DefaultMessageVisibilityTimeoutSec cannot be null");
 		}
 		this.topicNamesToSubscribe = config.getTopicNamesToSubscribe();
 		this.deadLetterQueueName = config.getDeadLetterQueueName();
@@ -101,7 +109,7 @@ public class MessageQueueImpl implements MessageQueue {
 		}
 
 		// Create the queue if it does not already exist
-		final String queueUrl = createQueue(queueName);
+		final String queueUrl = createQueue(queueName, defaultMessageVisibilityTimeoutSec);
 		final String queueArn = getQueueArn(queueUrl);
 		this.logger.info("Queue created. URL: " + queueUrl + " ARN: " + queueArn);
 		
@@ -109,7 +117,7 @@ public class MessageQueueImpl implements MessageQueue {
 		String dlqUrl = null;
 		String dlqArn = null;
 		if (deadLetterQueueName != null) {
-			dlqUrl = createQueue(deadLetterQueueName);
+			dlqUrl = createQueue(deadLetterQueueName, defaultMessageVisibilityTimeoutSec);
 			dlqArn = getQueueArn(dlqUrl);
 			this.logger.info("Queue created. URL: " + dlqUrl + " ARN: " + dlqArn);
 			this.deadLetterQueueUrl = dlqUrl;
@@ -127,10 +135,16 @@ public class MessageQueueImpl implements MessageQueue {
 	 * @param qName
 	 * @return The URL fo the queue.
 	 */
-	protected String createQueue(String qName) {
+	protected String createQueue(String qName, Integer defaultMessageVisibilityTimeoutSec) {
 		CreateQueueRequest cqRequest = new CreateQueueRequest(qName);
 		CreateQueueResult cqResult = this.awsSQSClient.createQueue(cqRequest);
 		String qUrl = cqResult.getQueueUrl();
+		GetQueueAttributesResult atts = this.awsSQSClient.getQueueAttributes(qUrl, Arrays.asList(VISIBILITY_TIMEOUT_KEY));
+		String expectedValue = defaultMessageVisibilityTimeoutSec.toString();
+		if(!expectedValue.equals(atts.getAttributes().get(VISIBILITY_TIMEOUT_KEY))){
+			// We need to set it
+			this.awsSQSClient.setQueueAttributes(new SetQueueAttributesRequest().withQueueUrl(qUrl).addAttributesEntry(VISIBILITY_TIMEOUT_KEY, expectedValue));
+		}
 		return qUrl;
 	}
 	

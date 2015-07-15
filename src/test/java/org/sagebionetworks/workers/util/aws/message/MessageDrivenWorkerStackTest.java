@@ -111,6 +111,8 @@ public class MessageDrivenWorkerStackTest {
 		config.setSemaphoreLockAndMessageVisibilityTimeoutSec(60);
 		config.setSemaphoreLockKey("lockKey");
 		config.setSemaphoreMaxLockCount(2);
+		
+		when(mockSQSClient.getQueueAttributes(anyString(), anyList())).thenReturn(new GetQueueAttributesResult().addAttributesEntry("VisibilityTimeout", "60"));
 	}
 
 	@Test
