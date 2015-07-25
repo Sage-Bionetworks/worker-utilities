@@ -134,4 +134,34 @@ public class SemaphoreGatedRunnerImplTest {
 		// start the gate
 		gate.run();
 	}
+	
+	@Test
+	public void testProvidedProgressCallback() throws Exception{
+		ProgressCallback<Void> mockProvidedCallback = Mockito.mock(ProgressCallback.class);
+		config.setProgressCallack(mockProvidedCallback);
+		gate = new SemaphoreGatedRunnerImpl(mockSemaphore, config);
+		String atoken = "atoken";
+		when(mockSemaphore.attemptToAcquireLock(lockKey, lockTimeoutSec, maxLockCount)).thenReturn(atoken);
+		
+		// Setup the runner to make progress at twice
+		doAnswer(new Answer<Void>() {
+
+			public Void answer(InvocationOnMock invocation) throws Throwable {
+				ProgressCallback callback = (ProgressCallback) invocation.getArguments()[0];
+				// once
+				callback.progressMade(null);
+				// twice
+				callback.progressMade(null);
+				return null;
+			}
+		}).when(mockRunner).run(any(ProgressCallback.class));
+		// start the gate
+		gate.run();
+		// The lock should get refreshed once due to throttling.
+		verify(mockSemaphore, times(1)).refreshLockTimeout(lockKey, atoken, lockTimeoutSec);
+		// The event should be forwarded to the provided callback once due to throttling.
+		verify(mockProvidedCallback, times(1)).progressMade(null);
+		// The lock should get released.
+		verify(mockSemaphore).releaseLock(lockKey, atoken);
+	}
 }

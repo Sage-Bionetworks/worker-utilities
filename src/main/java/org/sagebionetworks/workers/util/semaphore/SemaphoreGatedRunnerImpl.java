@@ -21,12 +21,13 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 	private static final Logger log = LogManager
 			.getLogger(SemaphoreGatedRunnerImpl.class);
 
-	CountingSemaphore semaphore;
-	ProgressingRunner<T> runner;
-	String lockKey;
-	long lockTimeoutSec = -1;
-	int maxLockCount = -1;
-	long throttleFrequencyMS;
+	final CountingSemaphore semaphore;
+	final ProgressingRunner<T> runner;
+	final String lockKey;
+	final long lockTimeoutSec;
+	final int maxLockCount;
+	final long throttleFrequencyMS;
+	final ProgressCallback<T> providedProgressCallback;
 
 	/**
 	 * 
@@ -46,6 +47,7 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 		this.lockKey = config.lockKey;
 		this.lockTimeoutSec = config.getLockTimeoutSec();
 		this.maxLockCount = config.getMaxLockCount();
+		this.providedProgressCallback = config.getProgressCallack();
 		// the frequency that {@link ProgressCallback#progressMade(Object)}
 		// calls can refresh the lock in the DB.
 		this.throttleFrequencyMS = (this.lockTimeoutSec * 1000) / 3;
@@ -72,6 +74,10 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 									// Give the lock more time
 									semaphore.refreshLockTimeout(lockKey,
 											lockToken, lockTimeoutSec);
+									// Forward the progress event if provided another callback.
+									if(providedProgressCallback != null){
+										providedProgressCallback.progressMade(t);
+									}
 								}
 							}, this.throttleFrequencyMS));
 				} finally {
