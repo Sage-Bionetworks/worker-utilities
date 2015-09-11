@@ -38,6 +38,7 @@ public class MessageDrivenWorkerStack implements Runnable {
 		PollingMessageReceiverConfiguration receiverConfiguration = config
 				.getPollingMessageReceiverConfiguration();
 		receiverConfiguration.setHasQueueUrl(messageQueue);
+		receiverConfiguration.setGate(config.getGate());
 		PollingMessageReceiverImpl pollingMessageReceiver = new PollingMessageReceiverImpl(
 				awsSQSClient, receiverConfiguration);
 		// create the semaphore gated runner

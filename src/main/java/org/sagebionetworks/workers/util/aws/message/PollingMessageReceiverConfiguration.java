@@ -1,5 +1,7 @@
 package org.sagebionetworks.workers.util.aws.message;
 
+import org.sagebionetworks.workers.util.Gate;
+
 /**
  * Configuration information for the PollingMessageReceiver
  * 
@@ -10,6 +12,25 @@ public class PollingMessageReceiverConfiguration {
 	Integer messageVisibilityTimeoutSec;
 	Integer semaphoreLockTimeoutSec;
 	MessageDrivenRunner runner;
+	Gate gate;
+
+	/**
+	 * The gate that control whether a worker should run
+	 * 
+	 * @return
+	 */
+	public Gate getGate() {
+		return gate;
+	}
+
+	/**
+	 * The gate that control whether a worker should run
+	 * 
+	 * @param gate
+	 */
+	public void setGate(Gate gate) {
+		this.gate = gate;
+	}
 
 	/**
 	 * The amount of time in seconds that a fetched message will be in flight
