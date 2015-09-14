@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.sagebionetworks.workers.util.Gate;
 import org.sagebionetworks.workers.util.progress.ProgressCallback;
 import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 import org.sagebionetworks.workers.util.progress.ThrottlingProgressCallback;
@@ -46,6 +47,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	Integer waitTimeSec;
 	MessageDrivenRunner runner;
 	long progressThrottleFrequencyMS;
+	Gate gate;
 
 	/**
 	 * 
@@ -100,6 +102,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 				.getMessageVisibilityTimeoutSec();
 		this.runner = config.getRunner();
 		this.progressThrottleFrequencyMS = (config.getSemaphoreLockTimeoutSec() * 1000) / 3;
+		this.gate = config.getGate();
 	}
 
 	/*
@@ -112,6 +115,9 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	public void run(final ProgressCallback<Message> containerProgressCallback) throws Exception {
 		Message message = null;
 		do {
+			if (gate != null && !gate.canRun()) {
+				break;
+			}
 			message = pollForMessage();
 			if(message != null){
 				processMessage(containerProgressCallback, message);

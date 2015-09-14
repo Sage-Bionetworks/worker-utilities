@@ -92,7 +92,7 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 			 */
 			throw e;
 		}catch (Throwable e) {
-			log.error(e);
+			log.error("Error on key " + lockKey + ": ",e);
 		}
 	}
 
