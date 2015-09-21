@@ -116,6 +116,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 		Message message = null;
 		do {
 			if (gate != null && !gate.canRun()) {
+				log.info("Gate: " + gate.getClass().getSimpleName() +" is closed.");
 				break;
 			}
 			message = pollForMessage();
