@@ -131,6 +131,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	 * @return
 	 */
 	private Message pollForMessage(){
+		log.info("Getting message for runner: " + runner.getClass().getSimpleName());
 		ReceiveMessageRequest request = new ReceiveMessageRequest();
 		request.setMaxNumberOfMessages(1);
 		request.setQueueUrl(this.messageQueueUrl);
