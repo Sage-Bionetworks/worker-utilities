@@ -124,6 +124,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 				processMessage(containerProgressCallback, message);
 			}
 		} while (message != null);
+		log.info("There is no more messages for runner: "+runner.getClass().getSimpleName());
 	}
 	
 	/**
@@ -169,6 +170,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	private void processMessage(
 			final ProgressCallback<Message> containerProgressCallback,
 			final Message message) throws Exception {
+		log.info("Processing message for runner: "+runner.getClass().getSimpleName());
 		// before we pass the message to the runner refresh the progress
 		containerProgressCallback.progressMade(message);
 		boolean deleteMessage = true;
