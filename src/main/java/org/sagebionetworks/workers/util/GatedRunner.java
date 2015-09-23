@@ -1,5 +1,8 @@
 package org.sagebionetworks.workers.util;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * A simple runner controlled with a gate.
  * 
@@ -9,6 +12,7 @@ package org.sagebionetworks.workers.util;
  */
 public class GatedRunner implements Runnable {
 
+	private Logger log = LogManager.getLogger(GatedRunner.class);
 	Gate gate;
 	Runnable runner;
 
@@ -32,6 +36,8 @@ public class GatedRunner implements Runnable {
 			} catch (Exception e) {
 				gate.runFailed(e);
 			}
+		} else {
+			log.info(gate.getClass().getSimpleName() + " is closed for " + runner.getClass().getSimpleName());
 		}
 	}
 
