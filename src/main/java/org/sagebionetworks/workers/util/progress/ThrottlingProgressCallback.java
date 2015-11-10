@@ -1,5 +1,8 @@
 package org.sagebionetworks.workers.util.progress;
 
+import org.sagebionetworks.workers.util.Clock;
+import org.sagebionetworks.workers.util.ClockImpl;
+
 
 /**
  * This implementation of a ProgressCallback wraps a target ProgressCallback and
@@ -19,21 +22,38 @@ public class ThrottlingProgressCallback<T> implements ProgressCallback<T> {
 	ProgressCallback<T> targetCallback;
 	long frequencyMS;
 	long lastFiredTime;
+	Clock clock;
 
 	/**
 	 * @param targetCallback Calls to {@link #progressMade(Object)} will be forward to this target unless throttled.
 	 * @param frequencyMS The frequency in milliseconds that calls should be forwarded to the target.
 	 */
 	public ThrottlingProgressCallback(ProgressCallback<T> targetCallback, long frequencyMS) {
+		this(targetCallback, frequencyMS, new ClockImpl());
+	}
+
+	/**
+	 * 
+	 * @param targetCallback
+	 * @param frequencyMS
+	 * @param clock
+	 */
+	public ThrottlingProgressCallback(ProgressCallback<T> targetCallback,
+			long frequencyMS, Clock clock) {
 		super();
 		this.targetCallback = targetCallback;
 		this.frequencyMS = frequencyMS;
+		if(clock == null){
+			throw new IllegalArgumentException("Clock cannot be null");
+		}
+		this.clock = clock;
 		this.lastFiredTime = -1;
 	}
 
+
 	@Override
 	public void progressMade(T t) {
-		long now = System.currentTimeMillis();
+		long now = clock.currentTimeMillis();
 		if (this.lastFiredTime < 0) {
 			// first call is forwarded.
 			this.lastFiredTime = now;
