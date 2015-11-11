@@ -18,9 +18,9 @@ import org.mockito.stubbing.Answer;
 
 import static org.mockito.Mockito.*;
 
+import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.workers.util.Gate;
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sns.model.CreateTopicRequest;

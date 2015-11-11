@@ -1,7 +1,7 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
-import org.sagebionetworks.workers.util.progress.ProgressingCallable;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressingCallable;
 
 /**
  * An abstraction for a semaphore that will run a {@link ProgressingCallable}

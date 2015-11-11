@@ -14,10 +14,10 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.sagebionetworks.common.util.Clock;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressingCallable;
 import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
-import org.sagebionetworks.workers.util.Clock;
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
-import org.sagebionetworks.workers.util.progress.ProgressingCallable;
 
 public class WriteReadSemaphoreRunnerTestImpl {
 	

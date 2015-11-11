@@ -1,6 +1,6 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sqs.model.Message;
 

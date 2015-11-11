@@ -6,6 +6,7 @@ import org.junit.Test;
 import static org.mockito.Mockito.*;
 
 import org.mockito.Mockito;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
 
 public class ThrottlingProgressCallbackTest {
 	

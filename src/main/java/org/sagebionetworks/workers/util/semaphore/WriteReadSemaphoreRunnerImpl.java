@@ -2,10 +2,10 @@ package org.sagebionetworks.workers.util.semaphore;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.sagebionetworks.common.util.Clock;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressingCallable;
 import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
-import org.sagebionetworks.workers.util.Clock;
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
-import org.sagebionetworks.workers.util.progress.ProgressingCallable;
 import org.sagebionetworks.workers.util.progress.ThrottlingProgressCallback;
 
 public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {

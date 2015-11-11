@@ -1,7 +1,8 @@
 package org.sagebionetworks.workers.util.progress;
 
-import org.sagebionetworks.workers.util.Clock;
-import org.sagebionetworks.workers.util.ClockImpl;
+import org.sagebionetworks.common.util.Clock;
+import org.sagebionetworks.common.util.ClockImpl;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
 
 
 /**
