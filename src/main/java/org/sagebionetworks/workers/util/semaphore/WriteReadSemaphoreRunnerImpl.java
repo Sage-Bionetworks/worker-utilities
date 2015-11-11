@@ -32,8 +32,8 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	 * @see org.sagebionetworks.workers.util.semaphore.WriteReadSemaphoreRunner#tryRunWithWriteLock(java.lang.String, long, org.sagebionetworks.workers.util.progress.ProgressingCallable)
 	 */
 	@Override
-	public <T> T tryRunWithWriteLock(final ProgressCallback<T> callback, final String lockKey, final long lockTimeoutSec,
-			ProgressingCallable<T> callable) throws Exception {
+	public <R, T> R tryRunWithWriteLock(final ProgressCallback<T> callback, final String lockKey, final int lockTimeoutSec,
+			ProgressingCallable<R,T> callable) throws Exception {
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}
@@ -84,8 +84,8 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	 * @see org.sagebionetworks.workers.util.semaphore.WriteReadSemaphoreRunner#tryRunWithReadLock(java.lang.String, long, org.sagebionetworks.workers.util.progress.ProgressingCallable)
 	 */
 	@Override
-	public <T> T tryRunWithReadLock(final ProgressCallback<T> callback, final String lockKey, final long lockTimeoutSec,
-			final ProgressingCallable<T> callable) throws Exception {
+	public <R,T> R tryRunWithReadLock(final ProgressCallback<T> callback, final String lockKey, final int lockTimeoutSec,
+			final ProgressingCallable<R,T> callable) throws Exception {
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}

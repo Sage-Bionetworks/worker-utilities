@@ -43,8 +43,8 @@ public interface WriteReadSemaphoreRunner {
 	 *             Thrown if the waiting gets interrupted.
 	 * @throws Exception
 	 */
-	public <T> T tryRunWithWriteLock(ProgressCallback<T> callback,
-			String lockKey, long lockTimeoutSec, ProgressingCallable<T> callable)
+	public <R, T> R tryRunWithWriteLock(ProgressCallback<T> callback,
+			String lockKey, int lockTimeoutSec, ProgressingCallable<R,T> callable)
 			throws Exception;
 
 	/**
@@ -72,8 +72,8 @@ public interface WriteReadSemaphoreRunner {
 	 *             reason.
 	 * @throws Exception
 	 */
-	public <T> T tryRunWithReadLock(ProgressCallback<T> callback,
-			String lockKey, long lockTimeoutSec, ProgressingCallable<T> runner)
+	public <R, T> R tryRunWithReadLock(ProgressCallback<T> callback,
+			String lockKey, int lockTimeoutSec, ProgressingCallable<R,T> runner)
 			throws Exception;
 
 }

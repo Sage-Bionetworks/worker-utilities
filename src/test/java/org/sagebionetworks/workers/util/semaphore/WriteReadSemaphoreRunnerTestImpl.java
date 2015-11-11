@@ -24,11 +24,11 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	WriteReadSemaphore mockWriteReadSemaphore;
 	Clock mockClock;
 	ProgressCallback<String> mockProgressCallback;
-	ProgressingCallable<String> mockCallable;
+	ProgressingCallable<Integer, String> mockCallable;
 	WriteReadSemaphoreRunner runner;
 	String lockKey;
-	long lockTimeoutSec;
-	String defaultResults;
+	int lockTimeoutSec;
+	Integer defaultResults;
 	String precursorToken;
 	String writeToken;
 
@@ -45,12 +45,12 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		lockTimeoutSec = 10;
 		runner = new WriteReadSemaphoreRunnerImpl(mockWriteReadSemaphore, mockClock);
 		
-		defaultResults = "someResults";
+		defaultResults = 999;
 		// Setup the callable to call progressMade()
-		doAnswer(new Answer<String>(){
+		doAnswer(new Answer<Integer>(){
 
 			@Override
-			public String answer(InvocationOnMock invocation) throws Throwable {
+			public Integer answer(InvocationOnMock invocation) throws Throwable {
 				ProgressCallback<String> callback = (ProgressCallback<String>) invocation.getArguments()[0];
 				// make some progress
 				callback.progressMade("one");
@@ -71,7 +71,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		String readToken = "aReadToken";
 		when(mockWriteReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec)).thenReturn(readToken);
 		// call under test.
-		String results = runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+		Integer results = runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 		assertEquals(defaultResults, results);
 		verify(mockWriteReadSemaphore).releaseReadLock(lockKey, readToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
@@ -89,7 +89,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		String readToken = "aReadToken";
 		when(mockWriteReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec)).thenReturn(readToken);
 		// call under test.
-		String results = runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+		Integer results = runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 		assertEquals(defaultResults, results);
 		verify(mockWriteReadSemaphore).releaseReadLock(lockKey, readToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
@@ -134,9 +134,8 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		String readToken = "aReadToken";
 		when(mockWriteReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec)).thenReturn(readToken);
 		// call under test.
-		String results;
 		try {
-			results = runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 			fail("Should have failed");
 		} catch (Exception e) {
 			// expected
@@ -148,7 +147,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	@Test
 	public void testTryRunWithWriteLockHappy() throws Exception{
 		// call under test.
-		String results = runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+		Integer results = runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 		assertEquals(defaultResults, results);
 		verify(mockWriteReadSemaphore).releaseWriteLock(lockKey, writeToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
@@ -163,7 +162,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	public void testTryRunWithWriteLockNullCallback() throws Exception{
 		mockProgressCallback = null;
 		// call under test.
-		String results = runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+		Integer results = runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 		assertEquals(defaultResults, results);
 		verify(mockWriteReadSemaphore).releaseWriteLock(lockKey, writeToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
