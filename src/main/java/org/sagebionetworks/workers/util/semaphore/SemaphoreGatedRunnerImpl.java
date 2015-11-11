@@ -2,11 +2,11 @@ package org.sagebionetworks.workers.util.semaphore;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressingRunner;
+import org.sagebionetworks.common.util.progress.ThrottlingProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
-import org.sagebionetworks.workers.util.progress.ProgressingRunner;
-import org.sagebionetworks.workers.util.progress.ThrottlingProgressCallback;
 
 /**
  * This is not a singleton. A new instance of this gate must be created each

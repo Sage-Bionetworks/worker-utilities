@@ -1,7 +1,7 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
-import org.sagebionetworks.workers.util.progress.ProgressingRunner;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressingRunner;
 
 /**
  * Configuration for a SemaphoreGatedRunner.

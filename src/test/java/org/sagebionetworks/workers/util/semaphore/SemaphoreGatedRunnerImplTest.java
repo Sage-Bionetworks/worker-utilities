@@ -15,10 +15,10 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressingRunner;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
-import org.sagebionetworks.workers.util.progress.ProgressCallback;
-import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 
 public class SemaphoreGatedRunnerImplTest {
 

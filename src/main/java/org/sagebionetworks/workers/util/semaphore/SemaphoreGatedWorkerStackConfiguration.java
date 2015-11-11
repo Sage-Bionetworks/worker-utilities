@@ -1,7 +1,7 @@
 package org.sagebionetworks.workers.util.semaphore;
 
+import org.sagebionetworks.common.util.progress.ProgressingRunner;
 import org.sagebionetworks.workers.util.Gate;
-import org.sagebionetworks.workers.util.progress.ProgressingRunner;
 
 public class SemaphoreGatedWorkerStackConfiguration {
 
