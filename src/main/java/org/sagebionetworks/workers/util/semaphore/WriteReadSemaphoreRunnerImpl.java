@@ -10,6 +10,8 @@ import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
 
 public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 
+	public static final int MINIMUM_LOCK_TIMEOUT_SEC = 2;
+
 	private static final Logger log = LogManager
 			.getLogger(SemaphoreGatedRunnerImpl.class);
 	
@@ -37,7 +39,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}
-		if(lockTimeoutSec < 2){
+		if(lockTimeoutSec < MINIMUM_LOCK_TIMEOUT_SEC){
 			throw new IllegalArgumentException("LockTimeout cannot be less than 2 seconds");
 		}
 		long halfTimeoutMs = (lockTimeoutSec/2)*1000;
@@ -89,7 +91,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}
-		if(lockTimeoutSec < 2){
+		if(lockTimeoutSec < MINIMUM_LOCK_TIMEOUT_SEC){
 			throw new IllegalArgumentException("LockTimeout cannot be less than 2 seconds");
 		}
 		long halfTimeoutMs = (lockTimeoutSec/2)*1000;
@@ -98,7 +100,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		}
 		final String readToken = this.writeReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec);
 		if(readToken == null){
-			throw new LockUnavilableException("Cannot get an write lock for key:"+lockKey);
+			throw new LockUnavilableException("Cannot get an read lock for key:"+lockKey);
 		}
 		try{
 			return callable.call(new ThrottlingProgressCallback<T>(new ProgressCallback<T>() {
