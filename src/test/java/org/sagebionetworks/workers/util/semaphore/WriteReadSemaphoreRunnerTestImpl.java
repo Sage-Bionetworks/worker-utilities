@@ -120,7 +120,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	
 	@Test (expected=IllegalArgumentException.class)
 	public void testReadCallalbeSmallTimeout() throws Exception{
-		lockTimeoutSec = 1;
+		lockTimeoutSec = WriteReadSemaphoreRunnerImpl.MINIMUM_LOCK_TIMEOUT_SEC-1;
 		// call under test.
 		runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 	}
@@ -190,7 +190,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	
 	@Test (expected=IllegalArgumentException.class)
 	public void testTryRunWithWriteLockSmallTimeout() throws Exception{
-		lockTimeoutSec = 1;
+		lockTimeoutSec = WriteReadSemaphoreRunnerImpl.MINIMUM_LOCK_TIMEOUT_SEC-1;
 		// call under test.
 		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 	}
