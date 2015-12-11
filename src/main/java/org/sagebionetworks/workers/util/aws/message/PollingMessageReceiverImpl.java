@@ -116,7 +116,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 		Message message = null;
 		do {
 			if (gate != null && !gate.canRun()) {
-				log.info(gate.getClass().getSimpleName() +" is closed for " + runner.getClass().getSimpleName());
+				log.trace(gate.getClass().getSimpleName() +" is closed for " + runner.getClass().getSimpleName());
 				break;
 			}
 			message = pollForMessage();
@@ -124,7 +124,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 				processMessage(containerProgressCallback, message);
 			}
 		} while (message != null);
-		log.info("There is no more messages for "+runner.getClass().getSimpleName());
+		log.trace("There is no more messages for "+runner.getClass().getSimpleName());
 	}
 	
 	/**
@@ -132,7 +132,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	 * @return
 	 */
 	private Message pollForMessage(){
-		log.info("Getting message for " + runner.getClass().getSimpleName());
+		log.trace("Getting message for " + runner.getClass().getSimpleName());
 		ReceiveMessageRequest request = new ReceiveMessageRequest();
 		request.setMaxNumberOfMessages(1);
 		request.setQueueUrl(this.messageQueueUrl);
@@ -170,7 +170,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	private void processMessage(
 			final ProgressCallback<Message> containerProgressCallback,
 			final Message message) throws Exception {
-		log.info("Processing message for "+runner.getClass().getSimpleName());
+		log.trace("Processing message for "+runner.getClass().getSimpleName());
 		// before we pass the message to the runner refresh the progress
 		containerProgressCallback.progressMade(message);
 		boolean deleteMessage = true;
