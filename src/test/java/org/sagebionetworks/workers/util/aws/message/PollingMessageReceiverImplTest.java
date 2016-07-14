@@ -227,20 +227,20 @@ public class PollingMessageReceiverImplTest {
 		doAnswer(new Answer<Void>() {
 			@Override
 			public Void answer(InvocationOnMock invocation) throws Throwable {
-				ProgressCallback<Message> callback = (ProgressCallback<Message>) invocation
+				ProgressCallback<Void> callback = (ProgressCallback<Void>) invocation
 						.getArguments()[0];
 				Message message = (Message) invocation.getArguments()[1];
 
 				// call back
-				callback.progressMade(message);
+				callback.progressMade(null);
 				// should be throttled
-				callback.progressMade(message);
+				callback.progressMade(null);
 				// should be throttled
-				callback.progressMade(message);
+				callback.progressMade(null);
 				// Now sleep and callback again
 				Thread.sleep(14000);
 				// should not be throttled.
-				callback.progressMade(message);
+				callback.progressMade(null);
 				return null;
 			}
 		}).when(mockRunner)

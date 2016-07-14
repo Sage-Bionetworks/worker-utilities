@@ -16,10 +16,10 @@ public interface MessageDrivenRunner {
 	 * unless a RecoverableMessageException is thrown.
 	 * 
 	 * @param progressCallback
-	 *            The runner is expected to call progressMade(Message) to notify
+	 *            The runner is expected to call progressMade(null) to notify
 	 *            the container that the runner is still working on the message.
 	 *            The container will refresh the message visibility timeout if
-	 *            needed when progressMade(Message) is called.
+	 *            needed when progressMade(null) is called.
 	 * @param message
 	 *            The message to be processed. The message will be deleted from
 	 *            the queue after the this call terminates unless a
@@ -34,6 +34,6 @@ public interface MessageDrivenRunner {
 	 *             indicates to the container that the message should be
 	 *             returned to the queue for future processing.
 	 */
-	public void run(ProgressCallback<Message> progressCallback, Message message)
+	public void run(ProgressCallback<Void> progressCallback, Message message)
 			throws RecoverableMessageException, Exception;
 }

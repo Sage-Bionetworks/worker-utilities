@@ -176,11 +176,11 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 		boolean deleteMessage = true;
 		try {
 			// Let the runner handle the message.
-			runner.run(new ThrottlingProgressCallback<Message>(
-					new ProgressCallback<Message>() {
+			runner.run(new ThrottlingProgressCallback<Void>(
+					new ProgressCallback<Void>() {
 
 						@Override
-						public void progressMade(Message t) {
+						public void progressMade(Void t) {
 							// let the container know progress was made
 							containerProgressCallback
 									.progressMade(message);
