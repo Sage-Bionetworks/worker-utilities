@@ -11,6 +11,11 @@ import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
 public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 
 	public static final int MINIMUM_LOCK_TIMEOUT_SEC = 2;
+	
+	/**
+	 * Sleep and throttle frequency.
+	 */
+	public static final long THROTTLE_SLEEP_FREQUENCY_MS = 2000;
 
 	private static final Logger log = LogManager
 			.getLogger(SemaphoreGatedRunnerImpl.class);
@@ -42,7 +47,6 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		if(lockTimeoutSec < MINIMUM_LOCK_TIMEOUT_SEC){
 			throw new IllegalArgumentException("LockTimeout cannot be less than 2 seconds");
 		}
-		long halfTimeoutMs = (lockTimeoutSec/2)*1000;
 		if(callable == null){
 			throw new IllegalArgumentException("Callable cannot be null");
 		}
@@ -57,7 +61,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 			writeToken = this.writeReadSemaphore.acquireWriteLock(lockKey, precursorToken, lockTimeoutSec);
 			if(writeToken == null){
 				log.debug("Waiting for write lock on key: "+lockKey+"...");
-				clock.sleep(halfTimeoutMs);
+				clock.sleep(THROTTLE_SLEEP_FREQUENCY_MS);
 			}
 		}
 		final String finalWriteToken = writeToken;
@@ -73,7 +77,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 						callback.progressMade(t);
 					}
 				}
-			}, halfTimeoutMs, clock)));
+			}, THROTTLE_SLEEP_FREQUENCY_MS, clock)));
 		}finally{
 			if(writeToken != null){
 				writeReadSemaphore.releaseWriteLock(lockKey, writeToken);
