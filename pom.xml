@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.sagebionetworks</groupId>
 	<artifactId>worker-utilities</artifactId>
-	<version>1.0.22</version>
+	<version>1.0.23</version>
 	<repositories>
 		<repository>
 			<id>sagebionetworks-releases-local</id>
@@ -54,7 +54,7 @@
 		<dependency>
 			<groupId>com.amazonaws</groupId>
 			<artifactId>aws-java-sdk</artifactId>
-			<version>1.9.24</version>
+			<version>1.11.46</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
