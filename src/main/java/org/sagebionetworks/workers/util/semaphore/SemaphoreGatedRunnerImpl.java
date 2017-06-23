@@ -3,6 +3,7 @@ package org.sagebionetworks.workers.util.semaphore;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
 import org.sagebionetworks.common.util.progress.ThrottlingProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
@@ -27,7 +28,7 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 	final long lockTimeoutSec;
 	final int maxLockCount;
 	final long throttleFrequencyMS;
-	final ProgressCallback<T> providedProgressCallback;
+	final ProgressCallback<T> progressCallback;
 
 	/**
 	 * 
@@ -47,10 +48,10 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 		this.lockKey = config.lockKey;
 		this.lockTimeoutSec = config.getLockTimeoutSec();
 		this.maxLockCount = config.getMaxLockCount();
-		this.providedProgressCallback = config.getProgressCallack();
 		// the frequency that {@link ProgressCallback#progressMade(Object)}
 		// calls can refresh the lock in the DB.
 		this.throttleFrequencyMS = (this.lockTimeoutSec * 1000) / 3;
+		this.progressCallback = new ThrottlingProgressCallback<T>(this.throttleFrequencyMS);
 		validateConfig();
 	}
 
@@ -62,24 +63,23 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 			// attempt to get a lock
 			final String lockToken = semaphore.attemptToAcquireLock(
 					this.lockKey, this.lockTimeoutSec, this.maxLockCount);
+			
+			// listen to progress events
+			this.progressCallback.addProgressListener(new ProgressListener<T>() {
+
+				@Override
+				public void progressMade(T t) {
+					// Give the lock more time
+					semaphore.refreshLockTimeout(lockKey,
+							lockToken, lockTimeoutSec);
+				}
+			});
 
 			// Only proceed if a lock was acquired
 			if (lockToken != null) {
 				try {
 					// Let the runner go while holding the lock
-					runner.run(new ThrottlingProgressCallback<T>(
-							new ProgressCallback<T>() {
-								@Override
-								public void progressMade(T t) {
-									// Give the lock more time
-									semaphore.refreshLockTimeout(lockKey,
-											lockToken, lockTimeoutSec);
-									// Forward the progress event if provided another callback.
-									if(providedProgressCallback != null){
-										providedProgressCallback.progressMade(t);
-									}
-								}
-							}, this.throttleFrequencyMS));
+					runner.run(this.progressCallback);
 				} finally {
 					semaphore.releaseLock(this.lockKey, lockToken);
 				}

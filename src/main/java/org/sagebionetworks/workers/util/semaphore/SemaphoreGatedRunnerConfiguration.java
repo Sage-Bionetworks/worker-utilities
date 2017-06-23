@@ -158,24 +158,24 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 		this.maxLockCount = maxLockCount;
 	}
 
-	/**
-	 * An optional parameter. When provided, progress made events will be
-	 * forwarded to this callback as well.
-	 * 
-	 * @return
-	 */
-	public ProgressCallback<T> getProgressCallack() {
-		return progressCallack;
-	}
-
-	/**
-	 * An optional parameter. When provided, progress made events will be
-	 * forwarded to this callback as well.
-	 * 
-	 * @param progressCallack
-	 */
-	public void setProgressCallack(ProgressCallback<T> progressCallack) {
-		this.progressCallack = progressCallack;
-	}
+//	/**
+//	 * An optional parameter. When provided, progress made events will be
+//	 * forwarded to this callback as well.
+//	 * 
+//	 * @return
+//	 */
+//	public ProgressCallback<T> getProgressCallack() {
+//		return progressCallack;
+//	}
+//
+//	/**
+//	 * An optional parameter. When provided, progress made events will be
+//	 * forwarded to this callback as well.
+//	 * 
+//	 * @param progressCallack
+//	 */
+//	public void setProgressCallack(ProgressCallback<T> progressCallack) {
+//		this.progressCallack = progressCallack;
+//	}
 
 }

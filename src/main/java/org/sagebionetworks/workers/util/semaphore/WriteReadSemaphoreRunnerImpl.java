@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.common.util.Clock;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingCallable;
 import org.sagebionetworks.common.util.progress.ThrottlingProgressCallback;
 import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
@@ -18,7 +19,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	public static final long THROTTLE_SLEEP_FREQUENCY_MS = 2000;
 
 	private static final Logger log = LogManager
-			.getLogger(SemaphoreGatedRunnerImpl.class);
+			.getLogger(WriteReadSemaphoreRunnerImpl.class);
 	
 	WriteReadSemaphore writeReadSemaphore;
 	Clock clock;
@@ -65,19 +66,21 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 			}
 		}
 		final String finalWriteToken = writeToken;
-		// once we have the write lock we are ready to run
-		try{
-			return callable.call((new ThrottlingProgressCallback<T>(new ProgressCallback<T>() {
+		// Listen to progress events
+		if(callback != null){
+			callback.addProgressListener(new ProgressListener<T>() {
+
 				@Override
 				public void progressMade(T t) {
 					// as progress is made refresh the write lock
 					writeReadSemaphore.refreshWriteLock(lockKey, finalWriteToken, lockTimeoutSec);
-					// forward if a callabck was provided.
-					if(callback != null){
-						callback.progressMade(t);
-					}
 				}
-			}, THROTTLE_SLEEP_FREQUENCY_MS, clock)));
+			});
+		}
+
+		// once we have the write lock we are ready to run
+		try{
+			return callable.call(callback);
 		}finally{
 			if(writeToken != null){
 				writeReadSemaphore.releaseWriteLock(lockKey, writeToken);
@@ -98,7 +101,6 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		if(lockTimeoutSec < MINIMUM_LOCK_TIMEOUT_SEC){
 			throw new IllegalArgumentException("LockTimeout cannot be less than 2 seconds");
 		}
-		long halfTimeoutMs = (lockTimeoutSec/2)*1000;
 		if(callable == null){
 			throw new IllegalArgumentException("Callable cannot be null");
 		}
@@ -106,18 +108,20 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		if(readToken == null){
 			throw new LockUnavilableException("Cannot get an read lock for key:"+lockKey);
 		}
-		try{
-			return callable.call(new ThrottlingProgressCallback<T>(new ProgressCallback<T>() {
+		// listen to callback events
+		if(callback != null){
+			callback.addProgressListener(new ProgressListener<T>() {
 
 				@Override
 				public void progressMade(T t) {
 					// refresh the read lock as progress is made.
 					writeReadSemaphore.refreshReadLock(lockKey, readToken, lockTimeoutSec);
-					if(callback != null){
-						callback.progressMade(t);
-					}
 				}
-			}, halfTimeoutMs, clock));
+			});
+		}
+		
+		try{
+			return callable.call(callback);
 		}finally{
 			this.writeReadSemaphore.releaseReadLock(lockKey, readToken);
 		}

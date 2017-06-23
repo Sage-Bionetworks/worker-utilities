@@ -15,13 +15,13 @@ public class MessageDrivenWorkerStackConfiguration {
 	
 	MessageQueueConfiguration messageQueueConfiguration;
 	PollingMessageReceiverConfiguration pollingMessageReceiverConfiguration;
-	SemaphoreGatedRunnerConfiguration<Message> semaphoreGatedRunnerConfiguration;
+	SemaphoreGatedRunnerConfiguration<Void> semaphoreGatedRunnerConfiguration;
 	Gate gate;
 
 	public MessageDrivenWorkerStackConfiguration() {
 		messageQueueConfiguration = new MessageQueueConfiguration();
 		pollingMessageReceiverConfiguration = new PollingMessageReceiverConfiguration();
-		semaphoreGatedRunnerConfiguration = new SemaphoreGatedRunnerConfiguration<Message>();
+		semaphoreGatedRunnerConfiguration = new SemaphoreGatedRunnerConfiguration<Void>();
 	}
 
 	public MessageQueueConfiguration getMessageQueueConfiguration() {
@@ -32,7 +32,7 @@ public class MessageDrivenWorkerStackConfiguration {
 		return pollingMessageReceiverConfiguration;
 	}
 
-	public SemaphoreGatedRunnerConfiguration<Message> getSemaphoreGatedRunnerConfiguration() {
+	public SemaphoreGatedRunnerConfiguration<Void> getSemaphoreGatedRunnerConfiguration() {
 		return semaphoreGatedRunnerConfiguration;
 	}
 	
@@ -97,6 +97,7 @@ public class MessageDrivenWorkerStackConfiguration {
 	 */
 	public void setGate(Gate gate) {
 		this.gate = gate;
+		pollingMessageReceiverConfiguration.setGate(gate);
 	}
 	
 	/**

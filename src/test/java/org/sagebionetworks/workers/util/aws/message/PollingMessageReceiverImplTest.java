@@ -30,7 +30,7 @@ public class PollingMessageReceiverImplTest {
 
 	AmazonSQSClient mockAmazonSQSClient;
 	MessageDrivenRunner mockRunner;
-	ProgressCallback<Message> mockProgressCallback;
+	ProgressCallback<Void> mockProgressCallback;
 
 	HasQueueUrl mockHasQueueUrl;
 	PollingMessageReceiverConfiguration config;
@@ -108,7 +108,7 @@ public class PollingMessageReceiverImplTest {
 
 		// call under test
 		receiver.run(mockProgressCallback);
-		verify(mockProgressCallback, never()).progressMade(any(Message.class));
+		verify(mockProgressCallback, never()).progressMade(null);
 		verify(mockRunner, never()).run(any(ProgressCallback.class),
 				any(Message.class));
 	}
@@ -127,7 +127,7 @@ public class PollingMessageReceiverImplTest {
 
 		// call under test
 		receiver.run(mockProgressCallback);
-		verify(mockProgressCallback, never()).progressMade(any(Message.class));
+		verify(mockProgressCallback, never()).progressMade(null);
 		verify(mockRunner, never()).run(any(ProgressCallback.class),
 				any(Message.class));
 	}
@@ -156,7 +156,7 @@ public class PollingMessageReceiverImplTest {
 
 		// call under test
 		receiver.run(mockProgressCallback);
-		verify(mockProgressCallback, times(1)).progressMade(any(Message.class));
+		verify(mockProgressCallback, times(1)).progressMade(null);
 		verify(mockRunner, times(1)).run(any(ProgressCallback.class),
 				any(Message.class));
 		// The message should be deleted
@@ -257,7 +257,7 @@ public class PollingMessageReceiverImplTest {
 		 * the runner calls the callback after waiting for 15 seconds. The rest
 		 * of the calls should be throttled.
 		 */
-		verify(mockProgressCallback, times(3)).progressMade(any(Message.class));
+		verify(mockProgressCallback, times(3)).progressMade(null);
 		ChangeMessageVisibilityRequest changeRequset = new ChangeMessageVisibilityRequest();
 		changeRequset.setQueueUrl(queueUrl);
 		changeRequset.setReceiptHandle(message.getReceiptHandle());
