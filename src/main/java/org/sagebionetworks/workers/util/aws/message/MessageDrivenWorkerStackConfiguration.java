@@ -5,8 +5,6 @@ import java.util.List;
 import org.sagebionetworks.workers.util.Gate;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 
-import com.amazonaws.services.sqs.model.Message;
-
 /**
  * Wrapper for all of the Configuration needed to create a MessageDrivenWorkerStack.
  *
@@ -15,13 +13,13 @@ public class MessageDrivenWorkerStackConfiguration {
 	
 	MessageQueueConfiguration messageQueueConfiguration;
 	PollingMessageReceiverConfiguration pollingMessageReceiverConfiguration;
-	SemaphoreGatedRunnerConfiguration<Void> semaphoreGatedRunnerConfiguration;
+	SemaphoreGatedRunnerConfiguration semaphoreGatedRunnerConfiguration;
 	Gate gate;
 
 	public MessageDrivenWorkerStackConfiguration() {
 		messageQueueConfiguration = new MessageQueueConfiguration();
 		pollingMessageReceiverConfiguration = new PollingMessageReceiverConfiguration();
-		semaphoreGatedRunnerConfiguration = new SemaphoreGatedRunnerConfiguration<Void>();
+		semaphoreGatedRunnerConfiguration = new SemaphoreGatedRunnerConfiguration();
 	}
 
 	public MessageQueueConfiguration getMessageQueueConfiguration() {
@@ -32,7 +30,7 @@ public class MessageDrivenWorkerStackConfiguration {
 		return pollingMessageReceiverConfiguration;
 	}
 
-	public SemaphoreGatedRunnerConfiguration<Void> getSemaphoreGatedRunnerConfiguration() {
+	public SemaphoreGatedRunnerConfiguration getSemaphoreGatedRunnerConfiguration() {
 		return semaphoreGatedRunnerConfiguration;
 	}
 	

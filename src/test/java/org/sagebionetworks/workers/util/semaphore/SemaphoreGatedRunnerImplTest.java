@@ -23,7 +23,7 @@ import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
 public class SemaphoreGatedRunnerImplTest {
 
 	CountingSemaphore mockSemaphore;
-	SemaphoreGatedRunnerConfiguration<Void> config;
+	SemaphoreGatedRunnerConfiguration config;
 	SemaphoreGatedRunnerImpl gate;
 	ProgressingRunner<Void> mockRunner;
 	String lockKey;
@@ -38,14 +38,14 @@ public class SemaphoreGatedRunnerImplTest {
 		lockTimeoutSec = 10;
 		maxLockCount = 2;
 
-		config = new SemaphoreGatedRunnerConfiguration<Void>(mockRunner, lockKey, lockTimeoutSec, maxLockCount);
+		config = new SemaphoreGatedRunnerConfiguration(mockRunner, lockKey, lockTimeoutSec, maxLockCount);
 		gate = new SemaphoreGatedRunnerImpl(mockSemaphore, config);
 	}
 	
 	@Test (expected=IllegalArgumentException.class)
 	public void testConfigureBad(){
 		mockRunner = null;
-		config = new SemaphoreGatedRunnerConfiguration<Void>(mockRunner, lockKey, lockTimeoutSec, maxLockCount);
+		config = new SemaphoreGatedRunnerConfiguration(mockRunner, lockKey, lockTimeoutSec, maxLockCount);
 		gate = new SemaphoreGatedRunnerImpl(mockSemaphore, config);
 	}
 	

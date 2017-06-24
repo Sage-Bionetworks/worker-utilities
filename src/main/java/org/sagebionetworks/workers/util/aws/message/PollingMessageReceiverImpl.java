@@ -41,13 +41,11 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
 	 */
 	public static int MIN_SEMAPHORE_LOCK_TIMEOUT_SEC = MAX_MESSAGE_POLL_TIME_SEC * 2;
 
-	AmazonSQSClient amazonSQSClient;
-	String messageQueueUrl;
-	Integer messageVisibilityTimeoutSec;
-	Integer waitTimeSec;
-	MessageDrivenRunner runner;
-	long progressThrottleFrequencyMS;
-	Gate gate;
+	final AmazonSQSClient amazonSQSClient;
+	final String messageQueueUrl;
+	final Integer messageVisibilityTimeoutSec;
+	final MessageDrivenRunner runner;
+	final Gate gate;
 
 	/**
 	 * 
@@ -100,15 +98,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
 		this.messageQueueUrl = config.getHasQueueUrl().getQueueUrl();
 		this.messageVisibilityTimeoutSec = config
 				.getMessageVisibilityTimeoutSec();
-
-		this.progressThrottleFrequencyMS = (config.getSemaphoreLockTimeoutSec() * 1000) / 3;
 		this.gate = config.getGate();
-		if(config.useProgressHeartbeat){
-			// wrap the runner.
-			this.runner = new AutoProgressingMessageDrivenRunner(config.getRunner(), this.progressThrottleFrequencyMS);
-		}else{
-			this.runner = config.getRunner();
-		}
 		this.runner = config.getRunner();
 	}
 
@@ -182,14 +172,15 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
 		containerProgressCallback.progressMade(null);
 		boolean deleteMessage = true;
 		// Listen to callback events
-		containerProgressCallback.addProgressListener(new ProgressListener<Void>() {
-			
+		ProgressListener<Void> listener = new ProgressListener<Void>() {
 			@Override
 			public void progressMade(Void t) {
 				// reset the message visibility timeout
 				resetMessageVisibilityTimeout(message);
 			}
-		});
+		};
+		// add a listener for this message
+		containerProgressCallback.addProgressListener(listener);
 		try {
 			// Let the runner handle the message.
 			runner.run(containerProgressCallback, message);
@@ -203,11 +194,14 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
 			// Ensure this message is visible again in 5 seconds
 			resetMessageVisibilityTimeout(message, RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
 		} finally {
+			// unconditionally remove the listener for this message
+			containerProgressCallback.removeProgressListener(listener);
 			if (deleteMessage) {
 				deleteMessage(message);
 			}
 		}
 	}
+	
 
 	/**
 	 * Delete the given message from the queue.

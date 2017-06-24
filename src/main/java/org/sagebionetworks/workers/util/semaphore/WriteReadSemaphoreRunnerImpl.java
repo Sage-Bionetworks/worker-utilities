@@ -42,6 +42,9 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	@Override
 	public <R, T> R tryRunWithWriteLock(final ProgressCallback<T> callback, final String lockKey, final int lockTimeoutSec,
 			ProgressingCallable<R,T> callable) throws Exception {
+		if(callback == null){
+			throw new IllegalArgumentException("ProgressCallback cannot be null");
+		}
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}
@@ -67,16 +70,14 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		}
 		final String finalWriteToken = writeToken;
 		// Listen to progress events
-		if(callback != null){
-			callback.addProgressListener(new ProgressListener<T>() {
+		callback.addProgressListener(new ProgressListener<T>() {
 
-				@Override
-				public void progressMade(T t) {
-					// as progress is made refresh the write lock
-					writeReadSemaphore.refreshWriteLock(lockKey, finalWriteToken, lockTimeoutSec);
-				}
-			});
-		}
+			@Override
+			public void progressMade(T t) {
+				// as progress is made refresh the write lock
+				writeReadSemaphore.refreshWriteLock(lockKey, finalWriteToken, lockTimeoutSec);
+			}
+		});
 
 		// once we have the write lock we are ready to run
 		try{
@@ -95,6 +96,9 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	@Override
 	public <R,T> R tryRunWithReadLock(final ProgressCallback<T> callback, final String lockKey, final int lockTimeoutSec,
 			final ProgressingCallable<R,T> callable) throws Exception {
+		if(callback == null){
+			throw new IllegalArgumentException("ProgressCallback cannot be null");
+		}
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}
@@ -109,16 +113,14 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 			throw new LockUnavilableException("Cannot get an read lock for key:"+lockKey);
 		}
 		// listen to callback events
-		if(callback != null){
-			callback.addProgressListener(new ProgressListener<T>() {
+		callback.addProgressListener(new ProgressListener<T>() {
 
-				@Override
-				public void progressMade(T t) {
-					// refresh the read lock as progress is made.
-					writeReadSemaphore.refreshReadLock(lockKey, readToken, lockTimeoutSec);
-				}
-			});
-		}
+			@Override
+			public void progressMade(T t) {
+				// refresh the read lock as progress is made.
+				writeReadSemaphore.refreshReadLock(lockKey, readToken, lockTimeoutSec);
+			}
+		});
 		
 		try{
 			return callable.call(callback);

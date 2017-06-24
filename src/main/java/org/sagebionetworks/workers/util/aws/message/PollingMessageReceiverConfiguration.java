@@ -13,7 +13,6 @@ public class PollingMessageReceiverConfiguration {
 	Integer semaphoreLockTimeoutSec;
 	MessageDrivenRunner runner;
 	Gate gate;
-	boolean useProgressHeartbeat = false;
 
 	/**
 	 * The gate that control whether a worker should run
@@ -110,23 +109,4 @@ public class PollingMessageReceiverConfiguration {
 	public void setHasQueueUrl(HasQueueUrl hasQueueUrl) {
 		this.hasQueueUrl = hasQueueUrl;
 	}
-
-	/**
-	 * Should progress events be automatically generated on a heartbeat.
-	 * 
-	 * @return
-	 */
-	public boolean isUseProgressHeartbeat() {
-		return useProgressHeartbeat;
-	}
-
-	/**
-	 * Should progress events be automatically generated on a heartbeat.
-	 * @param useProgressHeartbeat
-	 */
-	public void setUseProgressHeartbeat(boolean useProgressHeartbeat) {
-		this.useProgressHeartbeat = useProgressHeartbeat;
-	}
-
-
 }

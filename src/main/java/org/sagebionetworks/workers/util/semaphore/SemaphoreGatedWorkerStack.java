@@ -22,7 +22,7 @@ public class SemaphoreGatedWorkerStack implements Runnable {
 	public SemaphoreGatedWorkerStack(CountingSemaphore semaphore,
 			SemaphoreGatedWorkerStackConfiguration config) {
 
-		SemaphoreGatedRunnerImpl<Void> semaphoreGatedRunner = new SemaphoreGatedRunnerImpl<Void>(
+		SemaphoreGatedRunnerImpl semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(
 				semaphore, config.getSemaphoreGatedRunnerConfig());
 		if (config.getGate() != null) {
 			runner = new GatedRunner(config.getGate(), semaphoreGatedRunner);

@@ -5,43 +5,17 @@ import org.sagebionetworks.common.util.progress.ProgressingRunner;
 
 /**
  * Configuration for a SemaphoreGatedRunner.
- * 
- * @param <T>
- *            The type of the ProgressingRunner
  */
-public class SemaphoreGatedRunnerConfiguration<T> {
+public class SemaphoreGatedRunnerConfiguration {
 
-	ProgressingRunner<T> runner;
-	ProgressCallback<T> progressCallack;
+	ProgressingRunner<Void> runner;
 	String lockKey;
 	long lockTimeoutSec = -1;
 	int maxLockCount = -1;
+	boolean useProgressHeartbeat = false;
 
 	public SemaphoreGatedRunnerConfiguration() {
 		super();
-	}
-
-	/**
-	 * 
-	 * @param runner
-	 *            The runner that will be called when a lock is acquired. The
-	 *            lock will be held for the duration of this runners run()
-	 *            method.
-	 * @param lockKey
-	 *            The semaphore lock key that must be held in order to run the
-	 *            runner.
-	 * @param lockTimeoutSec
-	 *            The timeout of the semaphore lock in seconds. The runner must
-	 *            either terminate before this timeout expires or call
-	 *            {@link ProgressCallback#progressMade()} to extend the timeout.
-	 * @param maxLockCount
-	 *            The maximum number of concurrent locks that can be issued for
-	 *            the given semaphore key. If the runner is expected to be a
-	 *            singleton, then set this value to one.
-	 */
-	public SemaphoreGatedRunnerConfiguration(ProgressingRunner<T> runner,
-			String lockKey, long lockTimeoutSec, int maxLockCount) {
-		this(runner, lockKey, lockTimeoutSec, maxLockCount, null);
 	}
 
 	/**
@@ -65,15 +39,13 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 	 *            An optional parameter. When provided, progress made events
 	 *            will be forwarded to this callback as well.
 	 */
-	public SemaphoreGatedRunnerConfiguration(ProgressingRunner<T> runner,
-			String lockKey, long lockTimeoutSec, int maxLockCount,
-			ProgressCallback<T> progressCallback) {
+	public SemaphoreGatedRunnerConfiguration(ProgressingRunner<Void> runner,
+			String lockKey, long lockTimeoutSec, int maxLockCount) {
 		super();
 		this.runner = runner;
 		this.lockKey = lockKey;
 		this.lockTimeoutSec = lockTimeoutSec;
 		this.maxLockCount = maxLockCount;
-		this.progressCallack = progressCallback;
 	}
 
 	/**
@@ -82,7 +54,7 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 	 * 
 	 * @return
 	 */
-	public ProgressingRunner<T> getRunner() {
+	public ProgressingRunner<Void> getRunner() {
 		return runner;
 	}
 
@@ -92,7 +64,7 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 	 * 
 	 * @param runner
 	 */
-	public void setRunner(ProgressingRunner<T> runner) {
+	public void setRunner(ProgressingRunner<Void> runner) {
 		this.runner = runner;
 	}
 
@@ -158,24 +130,23 @@ public class SemaphoreGatedRunnerConfiguration<T> {
 		this.maxLockCount = maxLockCount;
 	}
 
-//	/**
-//	 * An optional parameter. When provided, progress made events will be
-//	 * forwarded to this callback as well.
-//	 * 
-//	 * @return
-//	 */
-//	public ProgressCallback<T> getProgressCallack() {
-//		return progressCallack;
-//	}
-//
-//	/**
-//	 * An optional parameter. When provided, progress made events will be
-//	 * forwarded to this callback as well.
-//	 * 
-//	 * @param progressCallack
-//	 */
-//	public void setProgressCallack(ProgressCallback<T> progressCallack) {
-//		this.progressCallack = progressCallack;
-//	}
+	/**
+	 * When set to true a heartbeat progress event will automatically be generated
+	 * as long as  the runner is running.
+	 * @return
+	 */
+	public boolean useProgressHeartbeat() {
+		return useProgressHeartbeat;
+	}
 
+	/**
+	 * When set to true a heartbeat progress event will automatically be generated
+	 * as long as  the runner is running.
+	 * @param useProgressHeartbeat
+	 */
+	public void setUseProgressHeartbeat(boolean useProgressHeartbeat) {
+		this.useProgressHeartbeat = useProgressHeartbeat;
+	}
+
+	
 }

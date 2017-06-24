@@ -2,6 +2,7 @@ package org.sagebionetworks.workers.util.semaphore;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.sagebionetworks.common.util.progress.AutoProgressingRunner;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
@@ -13,22 +14,20 @@ import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
  * This is not a singleton. A new instance of this gate must be created each
  * time you need one.
  * 
- * @param <T>
- *            The type of the ProgressingRunner
- * 
  */
-public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
+public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 
 	private static final Logger log = LogManager
 			.getLogger(SemaphoreGatedRunnerImpl.class);
 
 	final CountingSemaphore semaphore;
-	final ProgressingRunner<T> runner;
+	final ProgressingRunner<Void> runner;
 	final String lockKey;
 	final long lockTimeoutSec;
 	final int maxLockCount;
 	final long throttleFrequencyMS;
-	final ProgressCallback<T> progressCallback;
+	final boolean useProgressHeartbeat;
+	final int maxProgressListeners = 100;
 
 	/**
 	 * 
@@ -38,20 +37,26 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 	 *            configuration for this instances.
 	 */
 	public SemaphoreGatedRunnerImpl(CountingSemaphore semaphore,
-			SemaphoreGatedRunnerConfiguration<T> config) {
+			SemaphoreGatedRunnerConfiguration config) {
 		super();
 		this.semaphore = semaphore;
 		if (config == null) {
 			throw new IllegalArgumentException("Configuration cannot be null");
 		}
-		this.runner = config.getRunner();
+
 		this.lockKey = config.lockKey;
 		this.lockTimeoutSec = config.getLockTimeoutSec();
 		this.maxLockCount = config.getMaxLockCount();
 		// the frequency that {@link ProgressCallback#progressMade(Object)}
 		// calls can refresh the lock in the DB.
 		this.throttleFrequencyMS = (this.lockTimeoutSec * 1000) / 3;
-		this.progressCallback = new ThrottlingProgressCallback<T>(this.throttleFrequencyMS);
+		this.useProgressHeartbeat = config.useProgressHeartbeat();
+		if(this.useProgressHeartbeat){
+			// wrap the runner to generate progress heartbeats.
+			this.runner = new AutoProgressingRunner(config.getRunner(), this.throttleFrequencyMS);
+		}else{
+			this.runner = config.getRunner();
+		}
 		validateConfig();
 	}
 
@@ -63,12 +68,13 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 			// attempt to get a lock
 			final String lockToken = semaphore.attemptToAcquireLock(
 					this.lockKey, this.lockTimeoutSec, this.maxLockCount);
-			
+			// start with a new callback.
+			ProgressCallback<Void> progressCallback = new ThrottlingProgressCallback<Void>(this.throttleFrequencyMS, this.maxProgressListeners);
 			// listen to progress events
-			this.progressCallback.addProgressListener(new ProgressListener<T>() {
+			progressCallback.addProgressListener(new ProgressListener<Void>() {
 
 				@Override
-				public void progressMade(T t) {
+				public void progressMade(Void t) {
 					// Give the lock more time
 					semaphore.refreshLockTimeout(lockKey,
 							lockToken, lockTimeoutSec);
@@ -79,7 +85,7 @@ public class SemaphoreGatedRunnerImpl<T> implements SemaphoreGatedRunner {
 			if (lockToken != null) {
 				try {
 					// Let the runner go while holding the lock
-					runner.run(this.progressCallback);
+					runner.run(progressCallback);
 				} finally {
 					semaphore.releaseLock(this.lockKey, lockToken);
 				}

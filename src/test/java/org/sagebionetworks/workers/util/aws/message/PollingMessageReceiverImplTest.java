@@ -2,7 +2,6 @@ package org.sagebionetworks.workers.util.aws.message;
 
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -15,8 +14,6 @@ import java.util.LinkedList;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
@@ -216,60 +213,4 @@ public class PollingMessageReceiverImplTest {
 		verify(mockAmazonSQSClient, times(1)).changeMessageVisibility(
 				expectedRequest);
 	}
-
-	@Test
-	public void testProgressCallbackThrottle()
-			throws Throwable {
-		int timeout = 40;
-		config.setMessageVisibilityTimeoutSec(timeout);
-		config.setSemaphoreLockTimeoutSec(timeout);
-		// mock the runner to call progressMade.
-		doAnswer(new Answer<Void>() {
-			@Override
-			public Void answer(InvocationOnMock invocation) throws Throwable {
-				ProgressCallback<Void> callback = (ProgressCallback<Void>) invocation
-						.getArguments()[0];
-				Message message = (Message) invocation.getArguments()[1];
-
-				// call back
-				callback.progressMade(null);
-				// should be throttled
-				callback.progressMade(null);
-				// should be throttled
-				callback.progressMade(null);
-				// Now sleep and callback again
-				Thread.sleep(14000);
-				// should not be throttled.
-				callback.progressMade(null);
-				return null;
-			}
-		}).when(mockRunner)
-				.run(any(ProgressCallback.class), any(Message.class));
-
-		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
-				mockAmazonSQSClient, config);
-
-		// call under test
-		receiver.run(mockProgressCallback);
-		/*
-		 * Progress should be made for the following: One time after the message
-		 * received. The first time the runner calls the callback. The last time
-		 * the runner calls the callback after waiting for 15 seconds. The rest
-		 * of the calls should be throttled.
-		 */
-		verify(mockProgressCallback, times(3)).progressMade(null);
-		ChangeMessageVisibilityRequest changeRequset = new ChangeMessageVisibilityRequest();
-		changeRequset.setQueueUrl(queueUrl);
-		changeRequset.setReceiptHandle(message.getReceiptHandle());
-		changeRequset.setVisibilityTimeout(timeout);
-		/*
-		 * changeMessageVisibility() should be made for the following: The first
-		 * time the runner calls the callback. The last time the runner calls
-		 * the callback after waiting for 15 seconds. The rest of the calls
-		 * should be throttled.
-		 */
-		verify(mockAmazonSQSClient, times(2)).changeMessageVisibility(
-				changeRequset);
-	}
-
 }

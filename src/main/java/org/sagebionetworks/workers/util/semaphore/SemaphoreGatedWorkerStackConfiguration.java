@@ -5,14 +5,14 @@ import org.sagebionetworks.workers.util.Gate;
 
 public class SemaphoreGatedWorkerStackConfiguration {
 
-	private SemaphoreGatedRunnerConfiguration<Void> semaphoreGatedRunnerConfig;
+	private SemaphoreGatedRunnerConfiguration semaphoreGatedRunnerConfig;
 	private Gate gate;
 	
 	public SemaphoreGatedWorkerStackConfiguration(){
-		semaphoreGatedRunnerConfig = new SemaphoreGatedRunnerConfiguration<Void>();
+		semaphoreGatedRunnerConfig = new SemaphoreGatedRunnerConfiguration();
 	}
 	
-	public SemaphoreGatedRunnerConfiguration<Void> getSemaphoreGatedRunnerConfig() {
+	public SemaphoreGatedRunnerConfiguration getSemaphoreGatedRunnerConfig() {
 		return semaphoreGatedRunnerConfig;
 	}
 
