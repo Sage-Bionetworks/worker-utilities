@@ -7,13 +7,14 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.sagebionetworks.common.util.Clock;
@@ -25,9 +26,14 @@ import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
 
 public class WriteReadSemaphoreRunnerTestImpl {
 	
+	@Mock
 	WriteReadSemaphore mockWriteReadSemaphore;
+	@Mock
 	Clock mockClock;
 	ProgressCallback<String> progressCallback;
+	@Mock
+	ProgressCallback<String> mockProgressCallback;
+	@Mock
 	ProgressingCallable<Integer, String> mockCallable;
 	WriteReadSemaphoreRunner runner;
 	String lockKey;
@@ -35,16 +41,15 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	Integer defaultResults;
 	String precursorToken;
 	String writeToken;
-	
+	String readToken;
 	List<ProgressListener<Void>> progressListeners;
 
 	
 	@Before
 	public void before() throws Exception{
-		mockWriteReadSemaphore = Mockito.mock(WriteReadSemaphore.class);
-		mockClock = Mockito.mock(Clock.class);
+		MockitoAnnotations.initMocks(this);
+		
 		progressCallback = new SimpleProgressCallback<String>();
-		mockCallable = Mockito.mock(ProgressingCallable.class);
 		// simulate 10 seconds between calls.
 		when(mockClock.currentTimeMillis()).thenReturn(0L,1000*10L,1000*20L,1000*30L);
 		lockKey = "123";
@@ -70,18 +75,28 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		writeToken = "aWriteToken";
 		// Return null twice and the lock on the third try.
 		when(mockWriteReadSemaphore.acquireWriteLock(lockKey, precursorToken, lockTimeoutSec)).thenReturn(null,  null, writeToken);
+		
+		readToken = "aReadToken";
+		when(mockWriteReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec)).thenReturn(readToken);
 	}
 	
 	@Test
 	public void testReadCallalbeHappy() throws Exception{
-		String readToken = "aReadToken";
-		when(mockWriteReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec)).thenReturn(readToken);
 		// call under test.
 		Integer results = runner.tryRunWithReadLock(progressCallback, lockKey, lockTimeoutSec, mockCallable);
 		assertEquals(defaultResults, results);
 		verify(mockWriteReadSemaphore).releaseReadLock(lockKey, readToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
 		verify(mockWriteReadSemaphore, times(3)).refreshReadLock(lockKey, readToken, lockTimeoutSec);
+	}
+	
+	@Test
+	public void testReadCallalbeRemoveListner() throws Exception{
+		// call under test.
+		runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+		// verify that the listener is added and removed.
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
 	
 	@Test (expected=IllegalArgumentException.class)
@@ -126,12 +141,29 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	@Test
 	public void testReadCallalbeException() throws Exception{
 		Exception error = new RuntimeException("Failed");
+		reset(mockCallable);
+		when(mockCallable.call(any(ProgressCallback.class))).thenThrow(error);
+		// call under test.
+		try {
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+			fail("Should have failed");
+		} catch (Exception e) {
+			// expected
+		}
+		// verify that the listener is added and removed even with an exception.
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
+	}
+	
+	@Test
+	public void testReadCallalbeRemoveListenerException() throws Exception{
+		Exception error = new RuntimeException("Failed");
 		doThrow(error).when(mockCallable).call(any(ProgressCallback.class));
 		String readToken = "aReadToken";
 		when(mockWriteReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec)).thenReturn(readToken);
 		// call under test.
 		try {
-			runner.tryRunWithReadLock(progressCallback, lockKey, lockTimeoutSec, mockCallable);
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 			fail("Should have failed");
 		} catch (Exception e) {
 			// expected
@@ -148,6 +180,15 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		verify(mockWriteReadSemaphore).releaseWriteLock(lockKey, writeToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
 		verify(mockWriteReadSemaphore, times(3)).refreshWriteLock(lockKey, writeToken, lockTimeoutSec);
+	}
+	
+	@Test
+	public void testWriteCallalbeRemoveListner() throws Exception{
+		// call under test.
+		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+		// verify that the listener is added and removed.
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
 	
 	@Test (expected=IllegalArgumentException.class)
@@ -201,5 +242,22 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		}
 		// the write lock should still be released.
 		verify(mockWriteReadSemaphore).releaseWriteLock(lockKey, writeToken);
+	}
+	
+	@Test
+	public void testWriteCallalbeException() throws Exception{
+		Exception error = new RuntimeException("Failed");
+		reset(mockCallable);
+		when(mockCallable.call(any(ProgressCallback.class))).thenThrow(error);
+		// call under test.
+		try {
+			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
+			fail("Should have failed");
+		} catch (Exception e) {
+			// expected
+		}
+		// verify that the listener is added and removed even with an exception.
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
 }
