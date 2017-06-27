@@ -70,19 +70,22 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		}
 		final String finalWriteToken = writeToken;
 		// Listen to progress events
-		callback.addProgressListener(new ProgressListener<T>() {
+		ProgressListener<T> listener = new ProgressListener<T>() {
 
 			@Override
 			public void progressMade(T t) {
 				// as progress is made refresh the write lock
 				writeReadSemaphore.refreshWriteLock(lockKey, finalWriteToken, lockTimeoutSec);
 			}
-		});
+		};
+		callback.addProgressListener(listener);
 
 		// once we have the write lock we are ready to run
 		try{
 			return callable.call(callback);
 		}finally{
+			// unconditionally remove listener.
+			callback.removeProgressListener(listener);
 			if(writeToken != null){
 				writeReadSemaphore.releaseWriteLock(lockKey, writeToken);
 			}
