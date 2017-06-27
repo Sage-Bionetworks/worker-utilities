@@ -218,7 +218,7 @@ public class MessageDrivenWorkerStackTest {
 			@Override
 			public Void answer(InvocationOnMock invocation) throws Throwable {
 				// Wait for the timeout
-				Thread.sleep(timeoutMS);
+				Thread.sleep(timeoutMS*2);
 				return null;
 			}
 		}).when(mockRunner)

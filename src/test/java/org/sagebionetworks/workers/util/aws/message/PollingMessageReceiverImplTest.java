@@ -13,7 +13,8 @@ import java.util.LinkedList;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
@@ -25,10 +26,13 @@ import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 
 public class PollingMessageReceiverImplTest {
 
+	@Mock
 	AmazonSQSClient mockAmazonSQSClient;
+	@Mock
 	MessageDrivenRunner mockRunner;
+	@Mock
 	ProgressCallback<Void> mockProgressCallback;
-
+	@Mock
 	HasQueueUrl mockHasQueueUrl;
 	PollingMessageReceiverConfiguration config;
 	String queueUrl;
@@ -39,14 +43,11 @@ public class PollingMessageReceiverImplTest {
 
 	@Before
 	public void before() {
+		MockitoAnnotations.initMocks(this);
 		queueUrl = "aQueueUrl";
 		messageVisibilityTimeoutSec = 60;
 		semaphoreLockTimeoutSec = 60;
 
-		mockAmazonSQSClient = Mockito.mock(AmazonSQSClient.class);
-		mockHasQueueUrl = Mockito.mock(HasQueueUrl.class);
-		mockRunner = Mockito.mock(MessageDrivenRunner.class);
-		mockProgressCallback = Mockito.mock(ProgressCallback.class);
 
 		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
 
@@ -162,6 +163,8 @@ public class PollingMessageReceiverImplTest {
 		deleteMessageRequest.setReceiptHandle(message.getReceiptHandle());
 		verify(mockAmazonSQSClient, times(1)).deleteMessage(
 				deleteMessageRequest);
+		verify(mockProgressCallback).addProgressListener(any(ProgressCallback.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressCallback.class));
 	}
 
 	@Test
@@ -188,6 +191,8 @@ public class PollingMessageReceiverImplTest {
 		deleteMessageRequest.setReceiptHandle(message.getReceiptHandle());
 		verify(mockAmazonSQSClient, times(1)).deleteMessage(
 				deleteMessageRequest);
+		verify(mockProgressCallback).addProgressListener(any(ProgressCallback.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressCallback.class));
 	}
 
 	@Test
@@ -212,5 +217,7 @@ public class PollingMessageReceiverImplTest {
 				PollingMessageReceiverImpl.RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
 		verify(mockAmazonSQSClient, times(1)).changeMessageVisibility(
 				expectedRequest);
+		verify(mockProgressCallback).addProgressListener(any(ProgressCallback.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressCallback.class));
 	}
 }
