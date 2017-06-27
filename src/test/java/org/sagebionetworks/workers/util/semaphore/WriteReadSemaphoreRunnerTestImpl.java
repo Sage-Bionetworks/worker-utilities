@@ -138,29 +138,11 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		runner.tryRunWithReadLock(progressCallback, lockKey, lockTimeoutSec, mockCallable);
 	}
 	
-	@Test
-	public void testReadCallalbeException() throws Exception{
-		Exception error = new RuntimeException("Failed");
-		reset(mockCallable);
-		when(mockCallable.call(any(ProgressCallback.class))).thenThrow(error);
-		// call under test.
-		try {
-			runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
-			fail("Should have failed");
-		} catch (Exception e) {
-			// expected
-		}
-		// verify that the listener is added and removed even with an exception.
-		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
-		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
-	}
 	
 	@Test
 	public void testReadCallalbeRemoveListenerException() throws Exception{
 		Exception error = new RuntimeException("Failed");
 		doThrow(error).when(mockCallable).call(any(ProgressCallback.class));
-		String readToken = "aReadToken";
-		when(mockWriteReadSemaphore.acquireReadLock(lockKey, lockTimeoutSec)).thenReturn(readToken);
 		// call under test.
 		try {
 			runner.tryRunWithReadLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
@@ -170,6 +152,8 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		}
 		// lock should be release even for an error
 		verify(mockWriteReadSemaphore).releaseReadLock(lockKey, readToken);
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
 	
 	@Test
