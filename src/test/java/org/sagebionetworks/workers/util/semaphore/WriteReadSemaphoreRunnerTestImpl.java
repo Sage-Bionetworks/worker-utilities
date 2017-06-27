@@ -220,26 +220,12 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		Exception error = new RuntimeException("An error");
 		// call under test.
 		try {
-			runner.tryRunWithWriteLock(progressCallback, lockKey, lockTimeoutSec, mockCallable);
+			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
 		} catch (Exception e) {
 			assertEquals(error, e);
 		}
 		// the write lock should still be released.
 		verify(mockWriteReadSemaphore).releaseWriteLock(lockKey, writeToken);
-	}
-	
-	@Test
-	public void testWriteCallalbeException() throws Exception{
-		Exception error = new RuntimeException("Failed");
-		reset(mockCallable);
-		when(mockCallable.call(any(ProgressCallback.class))).thenThrow(error);
-		// call under test.
-		try {
-			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, lockTimeoutSec, mockCallable);
-			fail("Should have failed");
-		} catch (Exception e) {
-			// expected
-		}
 		// verify that the listener is added and removed even with an exception.
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
 		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
