@@ -27,7 +27,6 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 	final int maxLockCount;
 	final long throttleFrequencyMS;
 	final boolean useProgressHeartbeat;
-	final int maxProgressListeners = 100;
 
 	/**
 	 * 
@@ -69,7 +68,7 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 			final String lockToken = semaphore.attemptToAcquireLock(
 					this.lockKey, this.lockTimeoutSec, this.maxLockCount);
 			// start with a new callback.
-			ProgressCallback<Void> progressCallback = new ThrottlingProgressCallback<Void>(this.throttleFrequencyMS, this.maxProgressListeners);
+			ProgressCallback<Void> progressCallback = new ThrottlingProgressCallback<Void>(this.throttleFrequencyMS);
 			// listen to progress events
 			progressCallback.addProgressListener(new ProgressListener<Void>() {
 
