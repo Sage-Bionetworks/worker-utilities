@@ -113,18 +113,21 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 			throw new LockUnavilableException("Cannot get an read lock for key:"+lockKey);
 		}
 		// listen to callback events
-		callback.addProgressListener(new ProgressListener<T>() {
+		ProgressListener<T> listener = new ProgressListener<T>() {
 
 			@Override
 			public void progressMade(T t) {
 				// refresh the read lock as progress is made.
 				writeReadSemaphore.refreshReadLock(lockKey, readToken, lockTimeoutSec);
 			}
-		});
+		};
+		callback.addProgressListener(listener);
 		
 		try{
 			return callable.call(callback);
 		}finally{
+			// unconditionally remove the listener.
+			callback.removeProgressListener(listener);
 			this.writeReadSemaphore.releaseReadLock(lockKey, readToken);
 		}
 	}

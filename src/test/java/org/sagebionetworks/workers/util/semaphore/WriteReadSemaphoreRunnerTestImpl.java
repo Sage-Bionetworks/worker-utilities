@@ -70,7 +70,6 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		writeToken = "aWriteToken";
 		// Return null twice and the lock on the third try.
 		when(mockWriteReadSemaphore.acquireWriteLock(lockKey, precursorToken, lockTimeoutSec)).thenReturn(null,  null, writeToken);
-		
 	}
 	
 	@Test

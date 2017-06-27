@@ -70,7 +70,7 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 			// start with a new callback.
 			ProgressCallback<Void> progressCallback = new ThrottlingProgressCallback<Void>(this.throttleFrequencyMS);
 			// listen to progress events
-			progressCallback.addProgressListener(new ProgressListener<Void>() {
+			ProgressListener<Void> listener = new ProgressListener<Void>() {
 
 				@Override
 				public void progressMade(Void t) {
@@ -78,7 +78,8 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 					semaphore.refreshLockTimeout(lockKey,
 							lockToken, lockTimeoutSec);
 				}
-			});
+			};
+			progressCallback.addProgressListener(listener);
 
 			// Only proceed if a lock was acquired
 			if (lockToken != null) {
@@ -86,6 +87,7 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 					// Let the runner go while holding the lock
 					runner.run(progressCallback);
 				} finally {
+					progressCallback.removeProgressListener(listener);
 					semaphore.releaseLock(this.lockKey, lockToken);
 				}
 			}
