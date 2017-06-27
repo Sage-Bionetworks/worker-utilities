@@ -5,8 +5,8 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
-import org.sagebionetworks.common.util.progress.ThrottlingProgressCallback;
 import org.sagebionetworks.workers.util.Gate;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
@@ -20,7 +20,7 @@ import com.amazonaws.services.sqs.model.ReceiveMessageResult;
  * A MessageReceiver that uses long polling to fetch messages from AWS SQS.
  * 
  */
-public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
+public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
 
 	private static final Logger log = LogManager
 			.getLogger(PollingMessageReceiverImpl.class);
@@ -41,13 +41,11 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	 */
 	public static int MIN_SEMAPHORE_LOCK_TIMEOUT_SEC = MAX_MESSAGE_POLL_TIME_SEC * 2;
 
-	AmazonSQSClient amazonSQSClient;
-	String messageQueueUrl;
-	Integer messageVisibilityTimeoutSec;
-	Integer waitTimeSec;
-	MessageDrivenRunner runner;
-	long progressThrottleFrequencyMS;
-	Gate gate;
+	final AmazonSQSClient amazonSQSClient;
+	final String messageQueueUrl;
+	final Integer messageVisibilityTimeoutSec;
+	final MessageDrivenRunner runner;
+	final Gate gate;
 
 	/**
 	 * 
@@ -100,9 +98,8 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 		this.messageQueueUrl = config.getHasQueueUrl().getQueueUrl();
 		this.messageVisibilityTimeoutSec = config
 				.getMessageVisibilityTimeoutSec();
-		this.runner = config.getRunner();
-		this.progressThrottleFrequencyMS = (config.getSemaphoreLockTimeoutSec() * 1000) / 3;
 		this.gate = config.getGate();
+		this.runner = config.getRunner();
 	}
 
 	/*
@@ -112,7 +109,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	 * sagebionetworks.workers.util.progress.ProgressCallback)
 	 */
 	@Override
-	public void run(final ProgressCallback<Message> containerProgressCallback) throws Exception {
+	public void run(final ProgressCallback<Void> containerProgressCallback) throws Exception {
 		Message message = null;
 		do {
 			if (gate != null && !gate.canRun()) {
@@ -168,25 +165,25 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 	 * @throws Exception
 	 */
 	private void processMessage(
-			final ProgressCallback<Message> containerProgressCallback,
+			final ProgressCallback<Void> containerProgressCallback,
 			final Message message) throws Exception {
 		log.trace("Processing message for "+runner.getClass().getSimpleName());
 		// before we pass the message to the runner refresh the progress
-		containerProgressCallback.progressMade(message);
+		containerProgressCallback.progressMade(null);
 		boolean deleteMessage = true;
+		// Listen to callback events
+		ProgressListener<Void> listener = new ProgressListener<Void>() {
+			@Override
+			public void progressMade(Void t) {
+				// reset the message visibility timeout
+				resetMessageVisibilityTimeout(message);
+			}
+		};
+		// add a listener for this message
+		containerProgressCallback.addProgressListener(listener);
 		try {
 			// Let the runner handle the message.
-			runner.run(new ThrottlingProgressCallback<Void>(
-					new ProgressCallback<Void>() {
-
-						@Override
-						public void progressMade(Void t) {
-							// let the container know progress was made
-							containerProgressCallback
-									.progressMade(message);
-							resetMessageVisibilityTimeout(message);
-						}
-					}, progressThrottleFrequencyMS), message);
+			runner.run(containerProgressCallback, message);
 
 		} catch (RecoverableMessageException e) {
 			// this is the only case where we do not delete the message.
@@ -197,11 +194,14 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Message> {
 			// Ensure this message is visible again in 5 seconds
 			resetMessageVisibilityTimeout(message, RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
 		} finally {
+			// unconditionally remove the listener for this message
+			containerProgressCallback.removeProgressListener(listener);
 			if (deleteMessage) {
 				deleteMessage(message);
 			}
 		}
 	}
+	
 
 	/**
 	 * Delete the given message from the queue.

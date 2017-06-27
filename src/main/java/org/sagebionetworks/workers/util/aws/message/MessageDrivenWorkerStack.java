@@ -7,7 +7,6 @@ import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerImpl;
 
 import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.Message;
 
 /**
  * A message driven worker consists of three layers:
@@ -38,14 +37,13 @@ public class MessageDrivenWorkerStack implements Runnable {
 		PollingMessageReceiverConfiguration receiverConfiguration = config
 				.getPollingMessageReceiverConfiguration();
 		receiverConfiguration.setHasQueueUrl(messageQueue);
-		receiverConfiguration.setGate(config.getGate());
 		PollingMessageReceiverImpl pollingMessageReceiver = new PollingMessageReceiverImpl(
 				awsSQSClient, receiverConfiguration);
 		// create the semaphore gated runner
-		SemaphoreGatedRunnerConfiguration<Message> semaphoreGatedRunnerConfiguration = config
+		SemaphoreGatedRunnerConfiguration semaphoreGatedRunnerConfiguration = config
 				.getSemaphoreGatedRunnerConfiguration();
 		semaphoreGatedRunnerConfiguration.setRunner(pollingMessageReceiver);
-		SemaphoreGatedRunnerImpl<Message> semaphoreGatedRunner = new SemaphoreGatedRunnerImpl<Message>(semaphore,
+		SemaphoreGatedRunnerImpl semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(semaphore,
 				config.getSemaphoreGatedRunnerConfiguration());
 
 		if(config.getGate() != null){

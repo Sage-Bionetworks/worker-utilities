@@ -5,8 +5,6 @@ import java.util.List;
 import org.sagebionetworks.workers.util.Gate;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 
-import com.amazonaws.services.sqs.model.Message;
-
 /**
  * Wrapper for all of the Configuration needed to create a MessageDrivenWorkerStack.
  *
@@ -15,13 +13,13 @@ public class MessageDrivenWorkerStackConfiguration {
 	
 	MessageQueueConfiguration messageQueueConfiguration;
 	PollingMessageReceiverConfiguration pollingMessageReceiverConfiguration;
-	SemaphoreGatedRunnerConfiguration<Message> semaphoreGatedRunnerConfiguration;
+	SemaphoreGatedRunnerConfiguration semaphoreGatedRunnerConfiguration;
 	Gate gate;
 
 	public MessageDrivenWorkerStackConfiguration() {
 		messageQueueConfiguration = new MessageQueueConfiguration();
 		pollingMessageReceiverConfiguration = new PollingMessageReceiverConfiguration();
-		semaphoreGatedRunnerConfiguration = new SemaphoreGatedRunnerConfiguration<Message>();
+		semaphoreGatedRunnerConfiguration = new SemaphoreGatedRunnerConfiguration();
 	}
 
 	public MessageQueueConfiguration getMessageQueueConfiguration() {
@@ -32,7 +30,7 @@ public class MessageDrivenWorkerStackConfiguration {
 		return pollingMessageReceiverConfiguration;
 	}
 
-	public SemaphoreGatedRunnerConfiguration<Message> getSemaphoreGatedRunnerConfiguration() {
+	public SemaphoreGatedRunnerConfiguration getSemaphoreGatedRunnerConfiguration() {
 		return semaphoreGatedRunnerConfiguration;
 	}
 	
@@ -97,6 +95,7 @@ public class MessageDrivenWorkerStackConfiguration {
 	 */
 	public void setGate(Gate gate) {
 		this.gate = gate;
+		pollingMessageReceiverConfiguration.setGate(gate);
 	}
 	
 	/**
@@ -137,6 +136,16 @@ public class MessageDrivenWorkerStackConfiguration {
 	 */
 	public void setDeadLetterMaxFailureCount(Integer maxFailureCount) {
 		messageQueueConfiguration.setMaxFailureCount(maxFailureCount);
+	}
+	
+	/**
+	 * When set to true a heartbeat progress event will automatically be generated
+	 * as long as  the runner is running.
+	 * Defaults to false (no heartbeat).
+	 * @param useProgressHeartbeat
+	 */
+	public void setUseProgressHeartbeat(boolean useProgressHeartbeat) {
+		this.semaphoreGatedRunnerConfiguration.setUseProgressHeartbeat(useProgressHeartbeat);
 	}
 
 }

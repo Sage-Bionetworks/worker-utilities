@@ -109,5 +109,4 @@ public class PollingMessageReceiverConfiguration {
 	public void setHasQueueUrl(HasQueueUrl hasQueueUrl) {
 		this.hasQueueUrl = hasQueueUrl;
 	}
-
 }

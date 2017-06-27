@@ -1,7 +1,15 @@
 package org.sagebionetworks.workers.util.aws.message;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyList;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -11,13 +19,10 @@ import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.internal.matchers.Any;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-
-import static org.mockito.Mockito.*;
-
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.workers.util.Gate;
@@ -40,10 +45,15 @@ import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 
 public class MessageDrivenWorkerStackTest {
 
+	@Mock
 	AmazonSQSClient mockSQSClient;
+	@Mock
 	AmazonSNSClient mockSNSClient;
+	@Mock
 	CountingSemaphore mockSemaphore;
+	@Mock
 	Gate mockGate;
+	@Mock
 	MessageDrivenRunner mockRunner;
 
 	String queueUrl;
@@ -52,15 +62,12 @@ public class MessageDrivenWorkerStackTest {
 	String token;
 	Message message;
 	MessageDrivenWorkerStackConfiguration config;
+	
+	int timeoutMS = 4000;
 
 	@Before
 	public void setUp() throws Exception {
-		mockSQSClient = Mockito.mock(AmazonSQSClient.class);
-		mockSNSClient = Mockito.mock(AmazonSNSClient.class);
-		mockSemaphore = Mockito.mock(CountingSemaphore.class);
-		mockRunner = Mockito.mock(MessageDrivenRunner.class);
-		mockGate = Mockito.mock(Gate.class);
-
+		MockitoAnnotations.initMocks(this);
 		// mock queue
 		queueUrl = "queueURL";
 		queueArn = "queueArn";
@@ -108,11 +115,30 @@ public class MessageDrivenWorkerStackTest {
 		config.setQueueName("queueName");
 		config.setGate(mockGate);
 		config.setRunner(mockRunner);
-		config.setSemaphoreLockAndMessageVisibilityTimeoutSec(60);
+		config.setSemaphoreLockAndMessageVisibilityTimeoutSec(timeoutMS/1000);
 		config.setSemaphoreLockKey("lockKey");
 		config.setSemaphoreMaxLockCount(2);
 		
 		when(mockSQSClient.getQueueAttributes(anyString(), anyList())).thenReturn(new GetQueueAttributesResult().addAttributesEntry("VisibilityTimeout", "60"));
+		
+		// mock the runner to call progressMade.
+		doAnswer(new Answer<Void>() {
+			@Override
+			public Void answer(InvocationOnMock invocation) throws Throwable {
+				ProgressCallback<Void> callback = (ProgressCallback<Void>) invocation
+						.getArguments()[0];
+				Message message = (Message) invocation.getArguments()[1];
+
+				// call back
+				callback.progressMade(null);
+				// Wait for the timeout
+				Thread.sleep(timeoutMS+100);
+				// make more progress
+				callback.progressMade(null);
+				return null;
+			}
+		}).when(mockRunner)
+				.run(any(ProgressCallback.class), any(Message.class));
 	}
 
 	@Test
@@ -151,25 +177,10 @@ public class MessageDrivenWorkerStackTest {
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, mockSNSClient, config);
 		
-		// mock the runner to call progressMade.
-		doAnswer(new Answer<Void>() {
-			@Override
-			public Void answer(InvocationOnMock invocation) throws Throwable {
-				ProgressCallback<Void> callback = (ProgressCallback<Void>) invocation
-						.getArguments()[0];
-				Message message = (Message) invocation.getArguments()[1];
-
-				// call back
-				callback.progressMade(null);
-				return null;
-			}
-		}).when(mockRunner)
-				.run(any(ProgressCallback.class), any(Message.class));
-		
 		// call under test
 		stack.run();
 		// The progress should refresh the lock timeout.
-		verify(mockSemaphore).refreshLockTimeout(anyString(), anyString(), anyLong());
+		verify(mockSemaphore, times(2)).refreshLockTimeout(anyString(), anyString(), anyLong());
 		// The progress should refresh the visibility.
 		verify(mockSQSClient).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
 		
@@ -193,6 +204,54 @@ public class MessageDrivenWorkerStackTest {
 				mockSemaphore, mockSQSClient, mockSNSClient, config);
 		// the topic should be created if needed.
 		verify(mockSQSClient).createQueue(new CreateQueueRequest("deadletters"));	
+	}
+	
+	@Test
+	public void testProgressHeartbeatEnabled() throws RecoverableMessageException, Exception {
+		// enable heartbeat.
+		config.setUseProgressHeartbeat(true);
+		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
+				mockSemaphore, mockSQSClient, mockSNSClient, config);
+		
+		// setup the runner to just sleep with no progress
+		doAnswer(new Answer<Void>() {
+			@Override
+			public Void answer(InvocationOnMock invocation) throws Throwable {
+				// Wait for the timeout
+				Thread.sleep(timeoutMS);
+				return null;
+			}
+		}).when(mockRunner)
+				.run(any(ProgressCallback.class), any(Message.class));
+		
+		// call under test
+		stack.run();
+		// The progress should refresh the lock timeout.
+		verify(mockSQSClient, atLeast(2)).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
+	}
+	
+	@Test
+	public void testProgressHeartbeatDisabled() throws RecoverableMessageException, Exception {
+		// disable heartbeat.
+		config.setUseProgressHeartbeat(false);
+		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
+				mockSemaphore, mockSQSClient, mockSNSClient, config);
+		
+		// setup the runner to just sleep with no progress
+		doAnswer(new Answer<Void>() {
+			@Override
+			public Void answer(InvocationOnMock invocation) throws Throwable {
+				// Wait for the timeout
+				Thread.sleep(timeoutMS*2);
+				return null;
+			}
+		}).when(mockRunner)
+				.run(any(ProgressCallback.class), any(Message.class));
+		
+		// call under test
+		stack.run();
+		// The progress should refresh the lock timeout.
+		verify(mockSQSClient, never()).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
 	}
 
 }
