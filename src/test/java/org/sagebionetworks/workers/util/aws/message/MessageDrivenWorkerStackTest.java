@@ -8,7 +8,6 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -125,16 +124,11 @@ public class MessageDrivenWorkerStackTest {
 		doAnswer(new Answer<Void>() {
 			@Override
 			public Void answer(InvocationOnMock invocation) throws Throwable {
-				ProgressCallback<Void> callback = (ProgressCallback<Void>) invocation
+				ProgressCallback callback = (ProgressCallback) invocation
 						.getArguments()[0];
 				Message message = (Message) invocation.getArguments()[1];
-
-				// call back
-				callback.progressMade(null);
 				// Wait for the timeout
 				Thread.sleep(timeoutMS+100);
-				// make more progress
-				callback.progressMade(null);
 				return null;
 			}
 		}).when(mockRunner)
@@ -169,21 +163,6 @@ public class MessageDrivenWorkerStackTest {
 				mockSemaphore, mockSQSClient, mockSNSClient, config);
 		// call under test
 		stack.run();
-		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
-	}
-	
-	@Test
-	public void testProgressInStack() throws RecoverableMessageException, Exception {
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
-		
-		// call under test
-		stack.run();
-		// The progress should refresh the lock timeout.
-		verify(mockSemaphore, times(2)).refreshLockTimeout(anyString(), anyString(), anyLong());
-		// The progress should refresh the visibility.
-		verify(mockSQSClient).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
-		
 		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
 	}
 	
@@ -228,6 +207,7 @@ public class MessageDrivenWorkerStackTest {
 		stack.run();
 		// The progress should refresh the lock timeout.
 		verify(mockSQSClient, atLeast(2)).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
+		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
 	}
 	
 	@Test
@@ -252,6 +232,7 @@ public class MessageDrivenWorkerStackTest {
 		stack.run();
 		// The progress should refresh the lock timeout.
 		verify(mockSQSClient, never()).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
+		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
 	}
 
 }

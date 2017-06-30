@@ -3,12 +3,12 @@ package org.sagebionetworks.workers.util.semaphore;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -28,7 +28,7 @@ public class SemaphoreGatedRunnerImplTest {
 	SemaphoreGatedRunnerConfiguration config;
 	SemaphoreGatedRunnerImpl gate;
 	@Mock
-	ProgressingRunner<Void> mockRunner;
+	ProgressingRunner mockRunner;
 	String lockKey;
 	long lockTimeoutSec;
 	long lockTimeoutMS;
@@ -107,28 +107,6 @@ public class SemaphoreGatedRunnerImplTest {
 		verify(mockSemaphore, never()).releaseLock(anyString(), anyString());
 		// The worker should not get called.
 		verify(mockRunner, never()).run(any(ProgressCallback.class));
-	}
-	
-	@Test
-	public void testProgress() throws Exception{		
-		// Setup the runner to make progress at twice
-		doAnswer(new Answer<Void>() {
-
-			public Void answer(InvocationOnMock invocation) throws Throwable {
-				ProgressCallback callback = (ProgressCallback) invocation.getArguments()[0];
-				// once
-				callback.progressMade(null);
-				// twice
-				callback.progressMade(null);
-				return null;
-			}
-		}).when(mockRunner).run(any(ProgressCallback.class));
-		// start the gate
-		gate.run();
-		// The lock should get refreshed once due to throttling.
-		verify(mockSemaphore, times(1)).refreshLockTimeout(lockKey, atoken, lockTimeoutSec);
-		// The lock should get released.
-		verify(mockSemaphore).releaseLock(lockKey, atoken);
 	}
 	
 	@Test (expected=LockReleaseFailedException.class)

@@ -34,6 +34,6 @@ public interface MessageDrivenRunner {
 	 *             indicates to the container that the message should be
 	 *             returned to the queue for future processing.
 	 */
-	public void run(ProgressCallback<Void> progressCallback, Message message)
+	public void run(ProgressCallback progressCallback, Message message)
 			throws RecoverableMessageException, Exception;
 }

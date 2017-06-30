@@ -6,7 +6,6 @@ import org.sagebionetworks.common.util.Clock;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingCallable;
-import org.sagebionetworks.common.util.progress.ThrottlingProgressCallback;
 import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
 
 public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
@@ -40,8 +39,8 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	 * @see org.sagebionetworks.workers.util.semaphore.WriteReadSemaphoreRunner#tryRunWithWriteLock(java.lang.String, long, org.sagebionetworks.workers.util.progress.ProgressingCallable)
 	 */
 	@Override
-	public <R, T> R tryRunWithWriteLock(final ProgressCallback<T> callback, final String lockKey, final int lockTimeoutSec,
-			ProgressingCallable<R,T> callable) throws Exception {
+	public <R, T> R tryRunWithWriteLock(final ProgressCallback callback, final String lockKey, final int lockTimeoutSec,
+			ProgressingCallable<R> callable) throws Exception {
 		if(callback == null){
 			throw new IllegalArgumentException("ProgressCallback cannot be null");
 		}
@@ -70,10 +69,10 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		}
 		final String finalWriteToken = writeToken;
 		// Listen to progress events
-		ProgressListener<T> listener = new ProgressListener<T>() {
+		ProgressListener listener = new ProgressListener() {
 
 			@Override
-			public void progressMade(T t) {
+			public void progressMade() {
 				// as progress is made refresh the write lock
 				writeReadSemaphore.refreshWriteLock(lockKey, finalWriteToken, lockTimeoutSec);
 			}
@@ -97,8 +96,8 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	 * @see org.sagebionetworks.workers.util.semaphore.WriteReadSemaphoreRunner#tryRunWithReadLock(java.lang.String, long, org.sagebionetworks.workers.util.progress.ProgressingCallable)
 	 */
 	@Override
-	public <R,T> R tryRunWithReadLock(final ProgressCallback<T> callback, final String lockKey, final int lockTimeoutSec,
-			final ProgressingCallable<R,T> callable) throws Exception {
+	public <R,T> R tryRunWithReadLock(final ProgressCallback callback, final String lockKey, final int lockTimeoutSec,
+			final ProgressingCallable<R> callable) throws Exception {
 		if(callback == null){
 			throw new IllegalArgumentException("ProgressCallback cannot be null");
 		}
@@ -116,10 +115,10 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 			throw new LockUnavilableException("Cannot get an read lock for key:"+lockKey);
 		}
 		// listen to callback events
-		ProgressListener<T> listener = new ProgressListener<T>() {
+		ProgressListener listener = new ProgressListener() {
 
 			@Override
-			public void progressMade(T t) {
+			public void progressMade() {
 				// refresh the read lock as progress is made.
 				writeReadSemaphore.refreshReadLock(lockKey, readToken, lockTimeoutSec);
 			}

@@ -8,7 +8,7 @@ import org.sagebionetworks.common.util.progress.ProgressingRunner;
  */
 public class SemaphoreGatedRunnerConfiguration {
 
-	ProgressingRunner<Void> runner;
+	ProgressingRunner runner;
 	String lockKey;
 	long lockTimeoutSec = -1;
 	int maxLockCount = -1;
@@ -39,7 +39,7 @@ public class SemaphoreGatedRunnerConfiguration {
 	 *            An optional parameter. When provided, progress made events
 	 *            will be forwarded to this callback as well.
 	 */
-	public SemaphoreGatedRunnerConfiguration(ProgressingRunner<Void> runner,
+	public SemaphoreGatedRunnerConfiguration(ProgressingRunner runner,
 			String lockKey, long lockTimeoutSec, int maxLockCount) {
 		super();
 		this.runner = runner;
@@ -54,7 +54,7 @@ public class SemaphoreGatedRunnerConfiguration {
 	 * 
 	 * @return
 	 */
-	public ProgressingRunner<Void> getRunner() {
+	public ProgressingRunner getRunner() {
 		return runner;
 	}
 
@@ -64,7 +64,7 @@ public class SemaphoreGatedRunnerConfiguration {
 	 * 
 	 * @param runner
 	 */
-	public void setRunner(ProgressingRunner<Void> runner) {
+	public void setRunner(ProgressingRunner runner) {
 		this.runner = runner;
 	}
 

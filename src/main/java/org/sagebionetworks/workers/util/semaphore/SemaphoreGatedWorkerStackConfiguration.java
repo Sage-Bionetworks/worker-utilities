@@ -21,7 +21,7 @@ public class SemaphoreGatedWorkerStackConfiguration {
 	 * 
 	 * @param runner
 	 */
-	public void setProgressingRunner(ProgressingRunner<Void> runner){
+	public void setProgressingRunner(ProgressingRunner runner){
 		this.semaphoreGatedRunnerConfig.setRunner(runner);
 	}
 	

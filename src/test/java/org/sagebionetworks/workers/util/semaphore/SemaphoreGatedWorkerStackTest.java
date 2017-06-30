@@ -1,14 +1,16 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
@@ -16,16 +18,17 @@ import org.sagebionetworks.workers.util.Gate;
 
 public class SemaphoreGatedWorkerStackTest {
 	
+	@Mock
 	CountingSemaphore mockSemaphore;
-	ProgressingRunner<Void> mockRunner;
+	@Mock
+	ProgressingRunner mockRunner;
+	@Mock
 	Gate mockGate;
 	SemaphoreGatedWorkerStackConfiguration config;
 
 	@Before
 	public void before(){
-		mockSemaphore = Mockito.mock(CountingSemaphore.class);
-		mockGate = Mockito.mock(Gate.class);
-		mockRunner = Mockito.mock(ProgressingRunner.class);
+		MockitoAnnotations.initMocks(this);
 		
 		// mock semaphore
 		String token = "aToken";

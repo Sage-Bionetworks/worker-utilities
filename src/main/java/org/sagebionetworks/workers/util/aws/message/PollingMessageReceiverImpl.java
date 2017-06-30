@@ -20,7 +20,7 @@ import com.amazonaws.services.sqs.model.ReceiveMessageResult;
  * A MessageReceiver that uses long polling to fetch messages from AWS SQS.
  * 
  */
-public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
+public class PollingMessageReceiverImpl implements ProgressingRunner {
 
 	private static final Logger log = LogManager
 			.getLogger(PollingMessageReceiverImpl.class);
@@ -109,7 +109,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
 	 * sagebionetworks.workers.util.progress.ProgressCallback)
 	 */
 	@Override
-	public void run(final ProgressCallback<Void> containerProgressCallback) throws Exception {
+	public void run(final ProgressCallback containerProgressCallback) throws Exception {
 		Message message = null;
 		do {
 			if (gate != null && !gate.canRun()) {
@@ -165,16 +165,14 @@ public class PollingMessageReceiverImpl implements ProgressingRunner<Void> {
 	 * @throws Exception
 	 */
 	private void processMessage(
-			final ProgressCallback<Void> containerProgressCallback,
+			final ProgressCallback containerProgressCallback,
 			final Message message) throws Exception {
 		log.trace("Processing message for "+runner.getClass().getSimpleName());
-		// before we pass the message to the runner refresh the progress
-		containerProgressCallback.progressMade(null);
 		boolean deleteMessage = true;
 		// Listen to callback events
-		ProgressListener<Void> listener = new ProgressListener<Void>() {
+		ProgressListener listener = new ProgressListener() {
 			@Override
-			public void progressMade(Void t) {
+			public void progressMade() {
 				// reset the message visibility timeout
 				resetMessageVisibilityTimeout(message);
 			}
