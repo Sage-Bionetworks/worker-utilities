@@ -109,28 +109,6 @@ public class SemaphoreGatedRunnerImplTest {
 		verify(mockRunner, never()).run(any(ProgressCallback.class));
 	}
 	
-//	@Test
-//	public void testProgress() throws Exception{		
-//		// Setup the runner to make progress at twice
-//		doAnswer(new Answer<Void>() {
-//
-//			public Void answer(InvocationOnMock invocation) throws Throwable {
-//				ProgressCallback callback = (ProgressCallback) invocation.getArguments()[0];
-//				// once
-//				callback.progressMade(null);
-//				// twice
-//				callback.progressMade(null);
-//				return null;
-//			}
-//		}).when(mockRunner).run(any(ProgressCallback.class));
-//		// start the gate
-//		gate.run();
-//		// The lock should get refreshed once due to throttling.
-//		verify(mockSemaphore, times(1)).refreshLockTimeout(lockKey, atoken, lockTimeoutSec);
-//		// The lock should get released.
-//		verify(mockSemaphore).releaseLock(lockKey, atoken);
-//	}
-	
 	@Test (expected=LockReleaseFailedException.class)
 	public void testLockReleaseFailures() throws Exception{
 		String atoken = "atoken";
