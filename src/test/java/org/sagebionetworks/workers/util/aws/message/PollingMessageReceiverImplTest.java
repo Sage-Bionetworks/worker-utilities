@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
+import org.sagebionetworks.common.util.progress.ProgressListener;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
@@ -31,7 +32,7 @@ public class PollingMessageReceiverImplTest {
 	@Mock
 	MessageDrivenRunner mockRunner;
 	@Mock
-	ProgressCallback<Void> mockProgressCallback;
+	ProgressCallback mockProgressCallback;
 	@Mock
 	HasQueueUrl mockHasQueueUrl;
 	PollingMessageReceiverConfiguration config;
@@ -106,7 +107,6 @@ public class PollingMessageReceiverImplTest {
 
 		// call under test
 		receiver.run(mockProgressCallback);
-		verify(mockProgressCallback, never()).progressMade(null);
 		verify(mockRunner, never()).run(any(ProgressCallback.class),
 				any(Message.class));
 	}
@@ -125,7 +125,6 @@ public class PollingMessageReceiverImplTest {
 
 		// call under test
 		receiver.run(mockProgressCallback);
-		verify(mockProgressCallback, never()).progressMade(null);
 		verify(mockRunner, never()).run(any(ProgressCallback.class),
 				any(Message.class));
 	}
@@ -154,7 +153,6 @@ public class PollingMessageReceiverImplTest {
 
 		// call under test
 		receiver.run(mockProgressCallback);
-		verify(mockProgressCallback, times(1)).progressMade(null);
 		verify(mockRunner, times(1)).run(any(ProgressCallback.class),
 				any(Message.class));
 		// The message should be deleted
@@ -163,8 +161,8 @@ public class PollingMessageReceiverImplTest {
 		deleteMessageRequest.setReceiptHandle(message.getReceiptHandle());
 		verify(mockAmazonSQSClient, times(1)).deleteMessage(
 				deleteMessageRequest);
-		verify(mockProgressCallback).addProgressListener(any(ProgressCallback.class));
-		verify(mockProgressCallback).removeProgressListener(any(ProgressCallback.class));
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
 
 	@Test
@@ -191,8 +189,8 @@ public class PollingMessageReceiverImplTest {
 		deleteMessageRequest.setReceiptHandle(message.getReceiptHandle());
 		verify(mockAmazonSQSClient, times(1)).deleteMessage(
 				deleteMessageRequest);
-		verify(mockProgressCallback).addProgressListener(any(ProgressCallback.class));
-		verify(mockProgressCallback).removeProgressListener(any(ProgressCallback.class));
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
 
 	@Test
@@ -217,7 +215,7 @@ public class PollingMessageReceiverImplTest {
 				PollingMessageReceiverImpl.RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
 		verify(mockAmazonSQSClient, times(1)).changeMessageVisibility(
 				expectedRequest);
-		verify(mockProgressCallback).addProgressListener(any(ProgressCallback.class));
-		verify(mockProgressCallback).removeProgressListener(any(ProgressCallback.class));
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
 }

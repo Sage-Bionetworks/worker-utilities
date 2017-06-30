@@ -125,16 +125,11 @@ public class MessageDrivenWorkerStackTest {
 		doAnswer(new Answer<Void>() {
 			@Override
 			public Void answer(InvocationOnMock invocation) throws Throwable {
-				ProgressCallback<Void> callback = (ProgressCallback<Void>) invocation
+				ProgressCallback callback = (ProgressCallback) invocation
 						.getArguments()[0];
 				Message message = (Message) invocation.getArguments()[1];
-
-				// call back
-				callback.progressMade(null);
 				// Wait for the timeout
 				Thread.sleep(timeoutMS+100);
-				// make more progress
-				callback.progressMade(null);
 				return null;
 			}
 		}).when(mockRunner)

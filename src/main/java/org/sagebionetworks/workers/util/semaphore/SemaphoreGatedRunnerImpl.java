@@ -21,7 +21,7 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 			.getLogger(SemaphoreGatedRunnerImpl.class);
 
 	final CountingSemaphore semaphore;
-	final ProgressingRunner<Void> runner;
+	final ProgressingRunner runner;
 	final String lockKey;
 	final long lockTimeoutSec;
 	final int maxLockCount;
@@ -68,12 +68,12 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 			final String lockToken = semaphore.attemptToAcquireLock(
 					this.lockKey, this.lockTimeoutSec, this.maxLockCount);
 			// start with a new callback.
-			ProgressCallback<Void> progressCallback = new ThrottlingProgressCallback<Void>(this.throttleFrequencyMS);
+			ProgressCallback progressCallback = new ThrottlingProgressCallback(this.throttleFrequencyMS);
 			// listen to progress events
-			ProgressListener<Void> listener = new ProgressListener<Void>() {
+			ProgressListener listener = new ProgressListener() {
 
 				@Override
-				public void progressMade(Void t) {
+				public void progressMade() {
 					// Give the lock more time
 					semaphore.refreshLockTimeout(lockKey,
 							lockToken, lockTimeoutSec);
