@@ -6,7 +6,7 @@ import org.sagebionetworks.common.util.progress.AutoProgressingRunner;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
-import org.sagebionetworks.common.util.progress.ThrottlingProgressCallback;
+import org.sagebionetworks.common.util.progress.SynchronizedProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
 
@@ -25,7 +25,7 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 	final String lockKey;
 	final long lockTimeoutSec;
 	final int maxLockCount;
-	final long throttleFrequencyMS;
+	final long heartBeatFrequencyMS;
 	final boolean useProgressHeartbeat;
 
 	/**
@@ -48,11 +48,11 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 		this.maxLockCount = config.getMaxLockCount();
 		// the frequency that {@link ProgressCallback#progressMade(Object)}
 		// calls can refresh the lock in the DB.
-		this.throttleFrequencyMS = (this.lockTimeoutSec * 1000) / 3;
+		this.heartBeatFrequencyMS = (this.lockTimeoutSec * 1000) / 3;
 		this.useProgressHeartbeat = config.useProgressHeartbeat();
 		if(this.useProgressHeartbeat){
 			// wrap the runner to generate progress heartbeats.
-			this.runner = new AutoProgressingRunner(config.getRunner(), this.throttleFrequencyMS);
+			this.runner = new AutoProgressingRunner(config.getRunner(), this.heartBeatFrequencyMS);
 		}else{
 			this.runner = config.getRunner();
 		}
@@ -68,7 +68,7 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 			final String lockToken = semaphore.attemptToAcquireLock(
 					this.lockKey, this.lockTimeoutSec, this.maxLockCount);
 			// start with a new callback.
-			ProgressCallback progressCallback = new ThrottlingProgressCallback(this.throttleFrequencyMS);
+			ProgressCallback progressCallback = new SynchronizedProgressCallback();
 			// listen to progress events
 			ProgressListener listener = new ProgressListener() {
 

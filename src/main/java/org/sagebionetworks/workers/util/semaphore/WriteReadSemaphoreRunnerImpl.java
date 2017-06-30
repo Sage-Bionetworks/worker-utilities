@@ -6,7 +6,6 @@ import org.sagebionetworks.common.util.Clock;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingCallable;
-import org.sagebionetworks.common.util.progress.ThrottlingProgressCallback;
 import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
 
 public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
