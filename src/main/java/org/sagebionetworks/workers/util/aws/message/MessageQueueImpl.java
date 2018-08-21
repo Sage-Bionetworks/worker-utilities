@@ -6,6 +6,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
+import com.amazonaws.services.cloudwatch.model.ComparisonOperator;
+import com.amazonaws.services.cloudwatch.model.Dimension;
+import com.amazonaws.services.cloudwatch.model.PutMetricAlarmRequest;
+import com.amazonaws.services.cloudwatch.model.StandardUnit;
+import com.amazonaws.services.cloudwatch.model.Statistic;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -59,6 +65,8 @@ public class MessageQueueImpl implements MessageQueue {
 
 	private AmazonSNSClient awsSNSClient;
 
+	private AmazonCloudWatch awsCloudWatchClient;
+
 	private final String queueName;
 	private final List<String> topicNamesToSubscribe;
 	private String queueUrl;
@@ -67,17 +75,20 @@ public class MessageQueueImpl implements MessageQueue {
 	private final String deadLetterQueueName;
 	private String deadLetterQueueUrl;
 	private final Integer defaultMessageVisibilityTimeoutSec;
-	
+	private final Integer oldestMessageInQueueAlarmThresholdSec;
+	private final String alarmNotificationARN;
+
 	/**
 	 * @param awsSQSClient An AmazonSQSClient configured with credentials.
 	 * @param awsSNSClient An AmazonSNSClient configured with credentials.
 	 * @param config Configuration information for this queue.
 	 */
 	public MessageQueueImpl(AmazonSQSClient awsSQSClient,
-			AmazonSNSClient awsSNSClient, MessageQueueConfiguration config) {
+			AmazonSNSClient awsSNSClient, AmazonCloudWatch awsCloudWatchClient, MessageQueueConfiguration config) {
 		super();
 		this.awsSQSClient = awsSQSClient;
 		this.awsSNSClient = awsSNSClient;
+		this.awsCloudWatchClient = awsCloudWatchClient;
 		this.isEnabled = config.isEnabled();
 		this.queueName = config.getQueueName();
 		this.defaultMessageVisibilityTimeoutSec = config.getDefaultMessageVisibilityTimeoutSec();
@@ -94,9 +105,15 @@ public class MessageQueueImpl implements MessageQueue {
 		if (! validateDeadLetterParams(deadLetterQueueName, maxFailureCount)) {
 			throw new IllegalArgumentException("maxFailureCount and deadLetterQueueName must both be either null or not null");
 		}
+		this.oldestMessageInQueueAlarmThresholdSec = config.getOldestMessageInQueueAlarmThresholdSec();
+		this.alarmNotificationARN = config.getOldestMessageInQueueAlarmNotificationARN();
 		setup();
 	}
 
+	public MessageQueueImpl(AmazonSQSClient awsSQSClient,
+							AmazonSNSClient awsSNSClient, MessageQueueConfiguration config){
+		this(awsSQSClient, awsSNSClient, null, config);
+	}
 
 	/**
 	 * The idempotent queue setup.
@@ -112,7 +129,10 @@ public class MessageQueueImpl implements MessageQueue {
 		final String queueUrl = createQueue(queueName, defaultMessageVisibilityTimeoutSec);
 		final String queueArn = getQueueArn(queueUrl);
 		this.logger.info("Queue created. URL: " + queueUrl + " ARN: " + queueArn);
-		
+
+		//Add the alarm for the queue if necessary
+		addAlarmIfNecessary();
+
 		// Create the dead letter queue as requested
 		String dlqUrl = null;
 		String dlqArn = null;
@@ -147,7 +167,7 @@ public class MessageQueueImpl implements MessageQueue {
 		}
 		return qUrl;
 	}
-	
+
 	/**
 	 * Lookup the ARN of the queue using the queus's URL.
 	 * @param qUrl
@@ -164,6 +184,35 @@ public class MessageQueueImpl implements MessageQueue {
 			throw new IllegalStateException("Failed to get the ARN for Queue URL: " + qUrl);
 		}
 		return qArn;
+	}
+
+	protected void addAlarmIfNecessary(){
+		if (this.oldestMessageInQueueAlarmThresholdSec == null || this.alarmNotificationARN == null){
+			return;
+		}
+
+		Dimension metricDimension = new Dimension().withName("QueueName").withValue(this.queueName);
+		PutMetricAlarmRequest putMetricAlarmRequest = new PutMetricAlarmRequest();
+		putMetricAlarmRequest
+				.withNamespace("AWS/SQS")
+				.withDimensions(metricDimension)
+				.withAlarmName(this.queueName + "-oldest-message-exceed-time-alarm")
+				.withAlarmDescription(String.format("Alarm when oldest message in the %s queue exceeds %d seconds",
+						this.queueName, this.oldestMessageInQueueAlarmThresholdSec))
+
+				.withMetricName("ApproximateAgeOfOldestMessage")
+				.withStatistic(Statistic.Maximum)
+				.withComparisonOperator(ComparisonOperator.GreaterThanOrEqualToThreshold)
+				.withThreshold(this.oldestMessageInQueueAlarmThresholdSec.doubleValue())
+				.withUnit(StandardUnit.Seconds)
+
+				.withPeriod(300) //5 minutes
+				.withEvaluationPeriods(1)
+
+				.withActionsEnabled(true)
+				.withAlarmActions(this.alarmNotificationARN);
+
+		awsCloudWatchClient.putMetricAlarm(putMetricAlarmRequest);
 	}
 	
 	/**
