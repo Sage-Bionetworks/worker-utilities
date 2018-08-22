@@ -131,7 +131,7 @@ public class MessageQueueImpl implements MessageQueue {
 		this.logger.info("Queue created. URL: " + queueUrl + " ARN: " + queueArn);
 
 		//Add the alarm for the queue if necessary
-		addAlarmIfNecessary();
+		addWorkerQueueAlarmIfNecessary();
 
 		// Create the dead letter queue as requested
 		String dlqUrl = null;
@@ -186,8 +186,10 @@ public class MessageQueueImpl implements MessageQueue {
 		return qArn;
 	}
 
-	protected void addAlarmIfNecessary(){
-		if (this.oldestMessageInQueueAlarmThresholdSec == null || this.alarmNotificationARN == null){
+	protected void addWorkerQueueAlarmIfNecessary(){
+		if (this.oldestMessageInQueueAlarmThresholdSec == null
+				|| this.alarmNotificationARN == null
+				|| this.awsCloudWatchClient == null){
 			return;
 		}
 
