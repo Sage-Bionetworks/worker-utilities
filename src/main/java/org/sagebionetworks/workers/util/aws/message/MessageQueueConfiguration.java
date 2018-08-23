@@ -15,6 +15,9 @@ public class MessageQueueConfiguration {
 	String deadLetterQueueName;
 	Integer maxFailureCount;
 	Integer defaultMessageVisibilityTimeoutSec;
+	Integer oldestMessageInQueueAlarmThresholdSec;
+
+	String alarmNotificationARN;
 
 	public MessageQueueConfiguration() {
 	}
@@ -136,4 +139,35 @@ public class MessageQueueConfiguration {
 		return defaultMessageVisibilityTimeoutSec;
 	}
 
+	/**
+	 * An optional parameter that will cause an CloudWatch Alarm to be raised if the oldest message in the queue exceeds this value.
+	 * @return
+	 */
+	public Integer getOldestMessageInQueueAlarmThresholdSec() {
+		return oldestMessageInQueueAlarmThresholdSec;
+	}
+
+	/**
+	 * An optional parameter that will cause an CloudWatch Alarm to be raised if the oldest message in the queue exceeds this value.
+	 * @param oldestMessageInQueueAlarmThresholdSec
+	 */
+	public void setOldestMessageInQueueAlarmThresholdSec(Integer oldestMessageInQueueAlarmThresholdSec) {
+		this.oldestMessageInQueueAlarmThresholdSec = oldestMessageInQueueAlarmThresholdSec;
+	}
+
+	/**
+	 * ARN of the AWS resource to be notified when the alarm is triggered
+	 * @return
+	 */
+	public String getOldestMessageInQueueAlarmNotificationARN() {
+		return alarmNotificationARN;
+	}
+
+	/**
+	 * ARN of the AWS resource to be notified when the alarm is triggered
+	 * @param alarmNotificationARN
+	 */
+	public void setOldestMessageInQueueAlarmNotificationTopicARN(String alarmNotificationARN) {
+		this.alarmNotificationARN = alarmNotificationARN;
+	}
 }

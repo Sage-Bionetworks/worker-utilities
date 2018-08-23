@@ -42,6 +42,22 @@ public class MessageDrivenWorkerStackConfiguration {
 	public void setQueueName(String queueName) {
 		messageQueueConfiguration.setQueueName(queueName);
 	}
+
+	/**
+	 * An optional parameter that will cause an CloudWatch Alarm to be raised if the oldest message in the queue exceeds this value.
+	 * @param oldestMessageInQueueAlarmThresholdSec
+	 */
+	public void setOldestMessageInQueueAlarmThresholdSec(Integer oldestMessageInQueueAlarmThresholdSec){
+		messageQueueConfiguration.setOldestMessageInQueueAlarmThresholdSec(oldestMessageInQueueAlarmThresholdSec);
+	}
+
+	/**
+	 * ARN of the AWS resource to be notified when the alarm is triggered
+	 * @param alarmNotificationARN
+	 */
+	public void setOldestMessageInQueueAlarmNotificationTopicARN(String alarmNotificationARN){
+		messageQueueConfiguration.setOldestMessageInQueueAlarmNotificationTopicARN(alarmNotificationARN);
+	}
 	
 	/**
 	 * The runner that handles a message pulled from the queue.

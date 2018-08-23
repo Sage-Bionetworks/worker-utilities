@@ -1,5 +1,6 @@
 package org.sagebionetworks.workers.util.aws.message;
 
+import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.workers.util.GatedRunner;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
@@ -26,13 +27,13 @@ public class MessageDrivenWorkerStack implements Runnable {
 	Runnable runner;
 
 	public MessageDrivenWorkerStack(CountingSemaphore semaphore,
-			AmazonSQSClient awsSQSClient, AmazonSNSClient awsSNSClient,
+			AmazonSQSClient awsSQSClient, AmazonSNSClient awsSNSClient, AmazonCloudWatch awsCloudWatchClient,
 			MessageDrivenWorkerStackConfiguration config) {
 		// create the queue
 		MessageQueueConfiguration queueConfig = config
 				.getMessageQueueConfiguration();
 		MessageQueueImpl messageQueue = new MessageQueueImpl(awsSQSClient,
-				awsSNSClient, queueConfig);
+				awsSNSClient, awsCloudWatchClient, queueConfig);
 		// create the message receiver.
 		PollingMessageReceiverConfiguration receiverConfiguration = config
 				.getPollingMessageReceiverConfiguration();
@@ -53,6 +54,12 @@ public class MessageDrivenWorkerStack implements Runnable {
 			// Without a gate, the semaphoreGatedRunner will be the main runner.
 			runner = semaphoreGatedRunner;
 		}
+	}
+
+	public MessageDrivenWorkerStack(CountingSemaphore semaphore,
+									AmazonSQSClient awsSQSClient, AmazonSNSClient awsSNSClient,
+									MessageDrivenWorkerStackConfiguration config){
+		this(semaphore, awsSQSClient, awsSNSClient, null, config);
 	}
 
 	@Override
