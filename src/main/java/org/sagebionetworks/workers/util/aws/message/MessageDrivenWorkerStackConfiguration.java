@@ -55,8 +55,8 @@ public class MessageDrivenWorkerStackConfiguration {
 	 * ARN of the AWS resource to be notified when the alarm is triggered
 	 * @param alarmNotificationARN
 	 */
-	public void setOldestMessageInQueueAlarmNotificationARN(String alarmNotificationARN){
-		messageQueueConfiguration.setOldestMessageInQueueAlarmNotificationARN(alarmNotificationARN);
+	public void setOldestMessageInQueueAlarmNotificationTopicARN(String alarmNotificationARN){
+		messageQueueConfiguration.setOldestMessageInQueueAlarmNotificationTopicARN(alarmNotificationARN);
 	}
 	
 	/**

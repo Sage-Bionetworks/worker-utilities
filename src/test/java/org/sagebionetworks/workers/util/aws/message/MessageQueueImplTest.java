@@ -17,7 +17,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 
 import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sns.model.CreateTopicRequest;
@@ -84,7 +83,7 @@ public class MessageQueueImplTest {
 		config.setMaxFailureCount(5);
 		config.setDefaultMessageVisibilityTimeoutSec(60);
 		config.setOldestMessageInQueueAlarmThresholdSec(300);
-		config.setOldestMessageInQueueAlarmNotificationARN("someFakeARN");
+		config.setOldestMessageInQueueAlarmNotificationTopicARN("someFakeARN");
 
 		when(mockSQSClient.getQueueAttributes(anyString(), anyList())).thenReturn(new GetQueueAttributesResult().addAttributesEntry("VisibilityTimeout", "60"));
 	}
@@ -213,7 +212,7 @@ public class MessageQueueImplTest {
 
 	@Test
 	public void testAddAlarmIfNecessary_nullNotificationARN() {
-		config.setOldestMessageInQueueAlarmNotificationARN(null);
+		config.setOldestMessageInQueueAlarmNotificationTopicARN(null);
 
 		MessageQueueImpl messageQueue = new MessageQueueImpl(mockSQSClient, mockSNSClient, mockCloudWatchClient, config);
 		verify(mockCloudWatchClient, never()).putMetricAlarm(any(PutMetricAlarmRequest.class));
@@ -236,7 +235,7 @@ public class MessageQueueImplTest {
 
 		assertEquals("QueueName", capturedRequest.getDimensions().get(0).getName());
 		assertEquals("queueName", capturedRequest.getDimensions().get(0).getValue());
-		assertEquals("queueName-oldest-message-exceed-time-alarm", capturedRequest.getAlarmName());
+		assertEquals("queueName-oldest-message-exceed-time", capturedRequest.getAlarmName());
 		assertEquals("Alarm when oldest message in the queueName queue exceeds 300 seconds", capturedRequest.getAlarmDescription());
 		assertEquals(1, capturedRequest.getAlarmActions().size());
 		assertEquals("someFakeARN", capturedRequest.getAlarmActions().get(0));

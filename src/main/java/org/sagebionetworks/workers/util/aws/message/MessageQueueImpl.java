@@ -198,7 +198,7 @@ public class MessageQueueImpl implements MessageQueue {
 		putMetricAlarmRequest
 				.withNamespace("AWS/SQS")
 				.withDimensions(metricDimension)
-				.withAlarmName(this.queueName + "-oldest-message-exceed-time-alarm")
+				.withAlarmName(this.queueName + "-oldest-message-exceed-time")
 				.withAlarmDescription(String.format("Alarm when oldest message in the %s queue exceeds %d seconds",
 						this.queueName, this.oldestMessageInQueueAlarmThresholdSec))
 
