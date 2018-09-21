@@ -27,8 +27,8 @@ public class MessageDrivenWorkerStack implements Runnable {
 	Runnable runner;
 
 	public MessageDrivenWorkerStack(CountingSemaphore semaphore,
-			AmazonSQSClient awsSQSClient, AmazonSNSClient awsSNSClient,
-			MessageDrivenWorkerStackConfiguration config) {
+									AmazonSQSClient awsSQSClient,
+									MessageDrivenWorkerStackConfiguration config) {
 		// create the queue
 		MessageQueueConfiguration queueConfig = config
 				.getMessageQueueConfiguration();

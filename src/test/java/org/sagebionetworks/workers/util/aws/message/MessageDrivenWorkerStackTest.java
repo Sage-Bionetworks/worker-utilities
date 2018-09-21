@@ -19,9 +19,11 @@ import java.util.Map;
 import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
@@ -43,12 +45,11 @@ import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 
+@RunWith(MockitoJUnitRunner.class)
 public class MessageDrivenWorkerStackTest {
 
 	@Mock
 	AmazonSQSClient mockSQSClient;
-	@Mock
-	AmazonSNSClient mockSNSClient;
 	@Mock
 	CountingSemaphore mockSemaphore;
 	@Mock
@@ -67,32 +68,11 @@ public class MessageDrivenWorkerStackTest {
 
 	@Before
 	public void setUp() throws Exception {
-		MockitoAnnotations.initMocks(this);
 		// mock queue
 		queueUrl = "queueURL";
 		queueArn = "queueArn";
 		topicArn = "topicArn";
-		CreateQueueResult expectedRes = new CreateQueueResult()
-				.withQueueUrl(queueUrl);
-		when(mockSQSClient.createQueue(any(CreateQueueRequest.class)))
-				.thenReturn(expectedRes);
-		Map<String,String> attMap = new HashMap<String, String>(1);
-		attMap.put(MessageQueueImpl.QUEUE_ARN_KEY, queueArn);
-		GetQueueAttributesResult queAttributeResults = new GetQueueAttributesResult();
-		queAttributeResults.setAttributes(attMap);
-		when(mockSQSClient.getQueueAttributes(any(GetQueueAttributesRequest.class))).thenReturn(queAttributeResults);
-		CreateTopicResult createTopicResults = new CreateTopicResult();
-		createTopicResults.setTopicArn(topicArn);
-		when(mockSNSClient.createTopic(any(CreateTopicRequest.class))).thenReturn(createTopicResults);
-		ListSubscriptionsByTopicResult listSubscriptionResults = new ListSubscriptionsByTopicResult();
-		listSubscriptionResults.setNextToken(null);
-		Subscription subscription = new Subscription();
-		subscription.setTopicArn(topicArn);
-		subscription.setEndpoint(queueArn);
-		subscription.setProtocol(MessageQueueImpl.PROTOCOL_SQS);
-		listSubscriptionResults.setSubscriptions(Arrays.asList(subscription));
-		when(mockSNSClient.listSubscriptionsByTopic(any(ListSubscriptionsByTopicRequest.class))).thenReturn(listSubscriptionResults);
-		
+
 		// mock semaphore
 		token = "aToken";
 		when(mockSemaphore.attemptToAcquireLock(any(String.class),
@@ -118,9 +98,7 @@ public class MessageDrivenWorkerStackTest {
 		config.setSemaphoreLockAndMessageVisibilityTimeoutSec(timeoutMS/1000);
 		config.setSemaphoreLockKey("lockKey");
 		config.setSemaphoreMaxLockCount(2);
-		
-		when(mockSQSClient.getQueueAttributes(anyString(), anyList())).thenReturn(new GetQueueAttributesResult().addAttributesEntry("VisibilityTimeout", "60"));
-		
+
 		// mock the runner to call progressMade.
 		doAnswer(new Answer<Void>() {
 			@Override
@@ -141,7 +119,7 @@ public class MessageDrivenWorkerStackTest {
 	@Test
 	public void testHappyRun() throws RecoverableMessageException, Exception {
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
+				mockSemaphore, mockSQSClient, config);
 		// call under test
 		stack.run();
 		// happy case a message should be passed to the runner.
@@ -152,7 +130,7 @@ public class MessageDrivenWorkerStackTest {
 	public void testRunGateFalse() throws RecoverableMessageException, Exception {
 		when(mockGate.canRun()).thenReturn(false);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
+				mockSemaphore, mockSQSClient, config);
 		// call under test
 		stack.run();
 		verify(mockRunner, never()).run(any(ProgressCallback.class), any(Message.class));
@@ -163,7 +141,7 @@ public class MessageDrivenWorkerStackTest {
 		// gate is not required
 		config.setGate(null);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
+				mockSemaphore, mockSQSClient, config);
 		// call under test
 		stack.run();
 		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
@@ -174,7 +152,7 @@ public class MessageDrivenWorkerStackTest {
 		// enable heartbeat.
 		config.setUseProgressHeartbeat(true);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
+				mockSemaphore, mockSQSClient, config);
 		
 		// setup the runner to just sleep with no progress
 		doAnswer(new Answer<Void>() {
@@ -199,7 +177,7 @@ public class MessageDrivenWorkerStackTest {
 		// disable heartbeat.
 		config.setUseProgressHeartbeat(false);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
+				mockSemaphore, mockSQSClient, config);
 		
 		// setup the runner to just sleep with no progress
 		doAnswer(new Answer<Void>() {
