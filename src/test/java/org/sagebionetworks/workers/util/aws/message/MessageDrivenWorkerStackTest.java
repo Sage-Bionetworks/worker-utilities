@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
+import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -133,6 +134,8 @@ public class MessageDrivenWorkerStackTest {
 			}
 		}).when(mockRunner)
 				.run(any(ProgressCallback.class), any(Message.class));
+
+		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
 	}
 
 	@Test
@@ -164,25 +167,6 @@ public class MessageDrivenWorkerStackTest {
 		// call under test
 		stack.run();
 		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
-	}
-	
-	@Test
-	public void testQueueWithTopic(){
-		config.setTopicNamesToSubscribe(Arrays.asList("SomeTopicName"));
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
-		// the topic should be created if needed.
-		verify(mockSNSClient).createTopic(any(CreateTopicRequest.class));
-	}
-	
-	@Test
-	public void testSetDeadLetter(){
-		config.setDeadLetterQueueName("deadletters");
-		config.setDeadLetterMaxFailureCount(5);
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, mockSNSClient, config);
-		// the topic should be created if needed.
-		verify(mockSQSClient).createQueue(new CreateQueueRequest("deadletters"));	
 	}
 	
 	@Test
