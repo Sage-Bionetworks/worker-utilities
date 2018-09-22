@@ -44,22 +44,6 @@ public class MessageDrivenWorkerStackConfiguration {
 	}
 
 	/**
-	 * An optional parameter that will cause an CloudWatch Alarm to be raised if the oldest message in the queue exceeds this value.
-	 * @param oldestMessageInQueueAlarmThresholdSec
-	 */
-	public void setOldestMessageInQueueAlarmThresholdSec(Integer oldestMessageInQueueAlarmThresholdSec){
-		messageQueueConfiguration.setOldestMessageInQueueAlarmThresholdSec(oldestMessageInQueueAlarmThresholdSec);
-	}
-
-	/**
-	 * ARN of the AWS resource to be notified when the alarm is triggered
-	 * @param alarmNotificationARN
-	 */
-	public void setOldestMessageInQueueAlarmNotificationTopicARN(String alarmNotificationARN){
-		messageQueueConfiguration.setOldestMessageInQueueAlarmNotificationTopicARN(alarmNotificationARN);
-	}
-	
-	/**
 	 * The runner that handles a message pulled from the queue.
 	 * @param runner
 	 */
@@ -92,7 +76,6 @@ public class MessageDrivenWorkerStackConfiguration {
 	 */
 	public void setSemaphoreLockAndMessageVisibilityTimeoutSec(Integer timeoutSec){
 		semaphoreGatedRunnerConfiguration.setLockTimeoutSec(timeoutSec);
-		messageQueueConfiguration.setDefaultMessageVisibilityTimeoutSec(timeoutSec);
 		pollingMessageReceiverConfiguration.setMessageVisibilityTimeoutSec(timeoutSec);
 		pollingMessageReceiverConfiguration.setSemaphoreLockTimeoutSec(timeoutSec);
 	}
@@ -113,47 +96,7 @@ public class MessageDrivenWorkerStackConfiguration {
 		this.gate = gate;
 		pollingMessageReceiverConfiguration.setGate(gate);
 	}
-	
-	/**
-	 * An optional parameter used to subscribe the queue to receive messages
-	 * from each topic named in the list.
-	 * 
-	 * @param topicNamesToSubscribe
-	 */
-	public void setTopicNamesToSubscribe(List<String> topicNamesToSubscribe){
-		messageQueueConfiguration.setTopicNamesToSubscribe(topicNamesToSubscribe);
-	}
-	
-	/**
-	 * Optional parameter used to configure this queue to use setup a dead
-	 * letter queue for failed messages.
-	 * 
-	 * If this is set, then {@link #setDeadLetterMaxFailureCount(Integer)} must also be
-	 * set.
-	 * 
-	 * @param deadLetterQueueName
-	 *            The name of the dead letter queue where failed messages should
-	 *            be pushed when the max failure count is exceeded.
-	 */
-	public void setDeadLetterQueueName(String deadLetterQueueName) {
-		messageQueueConfiguration.setDeadLetterQueueName(deadLetterQueueName);
-	}
-	
-	/**
-	 * An optional parameter used to configure this queue to forward failed
-	 * messages to a dead letter queue.
-	 * 
-	 * If this is set then the {@link #setDeadLetterQueueName(Integer)} must
-	 * also be set.
-	 * 
-	 * @param maxFailureCount
-	 *            The maximum number of times a message should be retried before
-	 *            before being pushed to the dead letter queue.
-	 */
-	public void setDeadLetterMaxFailureCount(Integer maxFailureCount) {
-		messageQueueConfiguration.setMaxFailureCount(maxFailureCount);
-	}
-	
+
 	/**
 	 * When set to true a heartbeat progress event will automatically be generated
 	 * as long as  the runner is running.

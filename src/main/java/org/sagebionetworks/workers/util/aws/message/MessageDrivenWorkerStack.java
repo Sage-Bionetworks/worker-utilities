@@ -27,13 +27,12 @@ public class MessageDrivenWorkerStack implements Runnable {
 	Runnable runner;
 
 	public MessageDrivenWorkerStack(CountingSemaphore semaphore,
-			AmazonSQSClient awsSQSClient, AmazonSNSClient awsSNSClient, AmazonCloudWatch awsCloudWatchClient,
-			MessageDrivenWorkerStackConfiguration config) {
+									AmazonSQSClient awsSQSClient,
+									MessageDrivenWorkerStackConfiguration config) {
 		// create the queue
 		MessageQueueConfiguration queueConfig = config
 				.getMessageQueueConfiguration();
-		MessageQueueImpl messageQueue = new MessageQueueImpl(awsSQSClient,
-				awsSNSClient, awsCloudWatchClient, queueConfig);
+		MessageQueueImpl messageQueue = new MessageQueueImpl(awsSQSClient, queueConfig);
 		// create the message receiver.
 		PollingMessageReceiverConfiguration receiverConfiguration = config
 				.getPollingMessageReceiverConfiguration();
@@ -54,12 +53,6 @@ public class MessageDrivenWorkerStack implements Runnable {
 			// Without a gate, the semaphoreGatedRunner will be the main runner.
 			runner = semaphoreGatedRunner;
 		}
-	}
-
-	public MessageDrivenWorkerStack(CountingSemaphore semaphore,
-									AmazonSQSClient awsSQSClient, AmazonSNSClient awsSNSClient,
-									MessageDrivenWorkerStackConfiguration config){
-		this(semaphore, awsSQSClient, awsSNSClient, null, config);
 	}
 
 	@Override
