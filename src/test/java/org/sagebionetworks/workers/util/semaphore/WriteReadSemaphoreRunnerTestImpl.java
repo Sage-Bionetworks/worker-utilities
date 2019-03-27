@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -18,7 +17,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
@@ -27,9 +25,6 @@ import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingCallable;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
-import org.sagebionetworks.database.semaphore.CountingSemaphoreImpl;
-import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
-import org.sagebionetworks.database.semaphore.WriteReadSemaphoreImpl;
 
 @RunWith(MockitoJUnitRunner.class)
 public class WriteReadSemaphoreRunnerTestImpl {
@@ -57,8 +52,8 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		// simulate 10 seconds between calls.
 		when(mockClock.currentTimeMillis()).thenReturn(0L,1000*10L,1000*20L,1000*30L);
 		lockKey = "123";
-		readerLockKey = WriteReadSemaphoreRunnerImpl.readerLockKey(lockKey);
-		writerLockKey = WriteReadSemaphoreRunnerImpl.writerLockKey(lockKey);
+		readerLockKey = WriteReadSemaphoreRunnerImpl.createReaderLockKey(lockKey);
+		writerLockKey = WriteReadSemaphoreRunnerImpl.createWriterLockKey(lockKey);
 		lockTimeoutSec = 10;
 		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
 		

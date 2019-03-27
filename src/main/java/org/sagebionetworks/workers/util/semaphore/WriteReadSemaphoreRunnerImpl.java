@@ -1,6 +1,5 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import com.amazonaws.services.dynamodbv2.xspec.S;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.common.util.Clock;
@@ -8,7 +7,6 @@ import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingCallable;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
-import org.sagebionetworks.database.semaphore.WriteReadSemaphore;
 
 public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 
@@ -62,8 +60,8 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 			throw new IllegalArgumentException("Callable cannot be null");
 		}
 
-		final String readerLockKey = readerLockKey(lockKey);
-		final String writerLockKey = writerLockKey(lockKey);
+		final String readerLockKey = createReaderLockKey(lockKey);
+		final String writerLockKey = createWriterLockKey(lockKey);
 
 		//reserve a writer token if possible
 		String writerToken = this.countingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, WRITER_MAX_LOCKS);
@@ -117,8 +115,8 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 			throw new IllegalArgumentException("Callable cannot be null");
 		}
 
-		final String readerLockKey = readerLockKey(lockKey);
-		final String writerLockKey = writerLockKey(lockKey);
+		final String readerLockKey = createReaderLockKey(lockKey);
+		final String writerLockKey = createWriterLockKey(lockKey);
 
 
 		//If a writer is queued, don't allow acquisition of read lock
@@ -147,11 +145,11 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		}
 	}
 
-	static String writerLockKey(final String lockKey){
+	static String createWriterLockKey(final String lockKey){
 		return lockKey + WRITER_LOCK_SUFFIX;
 	}
 
-	static String readerLockKey(final String lockKey){
+	static String createReaderLockKey(final String lockKey){
 		return lockKey + READER_LOCK_SUFFIX;
 	}
 }
