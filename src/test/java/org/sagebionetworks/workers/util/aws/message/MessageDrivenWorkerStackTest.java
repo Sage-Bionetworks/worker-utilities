@@ -7,6 +7,8 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,6 +29,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
+import org.sagebionetworks.database.semaphore.LockKeyNotFoundException;
 import org.sagebionetworks.workers.util.Gate;
 
 import com.amazonaws.services.sns.AmazonSNSClient;
@@ -77,6 +80,10 @@ public class MessageDrivenWorkerStackTest {
 		token = "aToken";
 		when(mockSemaphore.attemptToAcquireLock(any(String.class),
 						anyLong(), anyInt())).thenReturn(token);
+
+		doThrow(LockKeyNotFoundException.class).when(mockSemaphore)
+				.refreshLockTimeout(anyString(),anyString(), anyLong());
+
 		// open by default
 		when(mockGate.canRun()).thenReturn(true);
 
@@ -153,7 +160,14 @@ public class MessageDrivenWorkerStackTest {
 		config.setUseProgressHeartbeat(true);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, config);
-		
+
+		int callCount = 0;
+		doAnswer((invocation) -> {
+			if(callCount >= 3){
+				throw new LockKeyNotFoundException("");
+			}
+			return null;}).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());
+
 		// setup the runner to just sleep with no progress
 		doAnswer(new Answer<Void>() {
 			@Override

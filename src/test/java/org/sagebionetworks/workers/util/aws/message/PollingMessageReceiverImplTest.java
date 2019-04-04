@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 
 import org.junit.Before;
@@ -69,6 +70,8 @@ public class PollingMessageReceiverImplTest {
 		config.setRunner(mockRunner);
 		config.setMessageVisibilityTimeoutSec(messageVisibilityTimeoutSec);
 		config.setSemaphoreLockTimeoutSec(semaphoreLockTimeoutSec);
+
+		when(mockProgressCallback.runnerShouldTerminate()).thenReturn(true);
 	}
 
 	@Test
@@ -217,5 +220,30 @@ public class PollingMessageReceiverImplTest {
 				expectedRequest);
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
 		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
+	}
+
+	@Test
+	public void testRunnerShouldTerminate() throws Exception {
+		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
+				mockAmazonSQSClient, config);
+
+		//always return a message
+		ReceiveMessageResult results = new ReceiveMessageResult();
+		Message message = new Message();
+		results.setMessages(Collections.singletonList(message));
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenAnswer((invocationOnMock) -> results);
+
+		//should not terminate for 3 times that we check.
+		when(mockProgressCallback.runnerShouldTerminate()).thenReturn(false, false, false, true);
+
+		// call under test
+		receiver.run(mockProgressCallback);
+
+		//since receiver.run() uses a do/while loop. we've done work for numInvocations("progressCallback.runnerShouldTerminate()") + 1 times
+		verify(mockRunner, times(4)).run(any(ProgressCallback.class),
+				any(Message.class));
+		verify(mockAmazonSQSClient, times(4)).deleteMessage(any(DeleteMessageRequest.class));
+		verify(mockProgressCallback, times(4)).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback, times(4)).removeProgressListener(any(ProgressListener.class));
 	}
 }
