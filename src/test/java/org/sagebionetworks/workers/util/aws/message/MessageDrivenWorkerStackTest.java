@@ -7,6 +7,7 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -121,6 +122,9 @@ public class MessageDrivenWorkerStackTest {
 				.run(any(ProgressCallback.class), any(Message.class));
 
 		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
+
+		//make sure we don't sit in a infinite while loop in PollingMessageReceiverImpl
+		doThrow(LockKeyNotFoundException.class).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());
 	}
 
 	@Test
@@ -161,12 +165,7 @@ public class MessageDrivenWorkerStackTest {
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, config);
 
-		int callCount = 0;
-		doAnswer((invocation) -> {
-			if(callCount >= 3){
-				throw new LockKeyNotFoundException("");
-			}
-			return null;}).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());
+		doNothing().doNothing().doNothing().doThrow(LockKeyNotFoundException.class).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());
 
 		// setup the runner to just sleep with no progress
 		doAnswer(new Answer<Void>() {

@@ -121,8 +121,9 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 				processMessage(containerProgressCallback, message);
 			} else {
 				Thread.sleep(1000);
+				containerProgressCallback.fireProgressMade();
 			}
-		} while (message != null &&!containerProgressCallback.runnerShouldTerminate());
+		} while (!containerProgressCallback.runnerShouldTerminate());
 		log.trace("There is no more messages for "+runner.getClass().getSimpleName());
 	}
 	
