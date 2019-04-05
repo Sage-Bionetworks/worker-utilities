@@ -97,14 +97,4 @@ public class MessageDrivenWorkerStackConfiguration {
 		pollingMessageReceiverConfiguration.setGate(gate);
 	}
 
-	/**
-	 * When set to true a heartbeat progress event will automatically be generated
-	 * as long as  the runner is running.
-	 * Defaults to false (no heartbeat).
-	 * @param useProgressHeartbeat
-	 */
-	public void setUseProgressHeartbeat(boolean useProgressHeartbeat) {
-		this.semaphoreGatedRunnerConfiguration.setUseProgressHeartbeat(useProgressHeartbeat);
-	}
-
 }

@@ -67,13 +67,5 @@ public class SemaphoreGatedWorkerStackConfiguration {
 	public void setGate(Gate gate) {
 		this.gate = gate;
 	}
-	
-	/**
-	 * When set to true a heartbeat progress event will automatically be generated
-	 * as long as  the runner is running.
-	 * @param useProgressHeartbeat
-	 */
-	public void setUseProgressHeartbeat(boolean useProgressHeartbeat) {
-		semaphoreGatedRunnerConfig.setUseProgressHeartbeat(useProgressHeartbeat);
-	}
+
 }

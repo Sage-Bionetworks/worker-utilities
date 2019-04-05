@@ -7,6 +7,9 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,6 +30,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
+import org.sagebionetworks.database.semaphore.LockKeyNotFoundException;
 import org.sagebionetworks.workers.util.Gate;
 
 import com.amazonaws.services.sns.AmazonSNSClient;
@@ -77,6 +81,10 @@ public class MessageDrivenWorkerStackTest {
 		token = "aToken";
 		when(mockSemaphore.attemptToAcquireLock(any(String.class),
 						anyLong(), anyInt())).thenReturn(token);
+
+		doThrow(LockKeyNotFoundException.class).when(mockSemaphore)
+				.refreshLockTimeout(anyString(),anyString(), anyLong());
+
 		// open by default
 		when(mockGate.canRun()).thenReturn(true);
 
@@ -114,46 +122,20 @@ public class MessageDrivenWorkerStackTest {
 				.run(any(ProgressCallback.class), any(Message.class));
 
 		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
+
+		//make sure we don't sit in a infinite while loop in PollingMessageReceiverImpl
+		doThrow(LockKeyNotFoundException.class).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());
 	}
 
-	@Test
-	public void testHappyRun() throws RecoverableMessageException, Exception {
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, config);
-		// call under test
-		stack.run();
-		// happy case a message should be passed to the runner.
-		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
-	}
-	
-	@Test
-	public void testRunGateFalse() throws RecoverableMessageException, Exception {
-		when(mockGate.canRun()).thenReturn(false);
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, config);
-		// call under test
-		stack.run();
-		verify(mockRunner, never()).run(any(ProgressCallback.class), any(Message.class));
-	}
-	
-	@Test
-	public void testHappyNullGate() throws RecoverableMessageException, Exception {
-		// gate is not required
-		config.setGate(null);
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, config);
-		// call under test
-		stack.run();
-		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
-	}
 	
 	@Test
 	public void testProgressHeartbeatEnabled() throws RecoverableMessageException, Exception {
 		// enable heartbeat.
-		config.setUseProgressHeartbeat(true);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, config);
-		
+
+		doNothing().doNothing().doNothing().doThrow(LockKeyNotFoundException.class).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());
+
 		// setup the runner to just sleep with no progress
 		doAnswer(new Answer<Void>() {
 			@Override
@@ -175,7 +157,6 @@ public class MessageDrivenWorkerStackTest {
 	@Test
 	public void testProgressHeartbeatDisabled() throws RecoverableMessageException, Exception {
 		// disable heartbeat.
-		config.setUseProgressHeartbeat(false);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, config);
 		

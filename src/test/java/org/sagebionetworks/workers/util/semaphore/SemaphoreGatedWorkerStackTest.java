@@ -35,7 +35,7 @@ public class SemaphoreGatedWorkerStackTest {
 		when(mockSemaphore.attemptToAcquireLock(any(String.class),
 						anyLong(), anyInt())).thenReturn(token);
 		
-		// mock gate
+		// mock semaphoreGatedRunner
 		when(mockGate.canRun()).thenReturn(true);
 		
 		config = new SemaphoreGatedWorkerStackConfiguration();

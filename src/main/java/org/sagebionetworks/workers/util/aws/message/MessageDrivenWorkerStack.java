@@ -2,7 +2,6 @@ package org.sagebionetworks.workers.util.aws.message;
 
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
-import org.sagebionetworks.workers.util.GatedRunner;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerImpl;
 
@@ -42,17 +41,10 @@ public class MessageDrivenWorkerStack implements Runnable {
 		// create the semaphore gated runner
 		SemaphoreGatedRunnerConfiguration semaphoreGatedRunnerConfiguration = config
 				.getSemaphoreGatedRunnerConfiguration();
+		//always ensure that heartbeat config is true
 		semaphoreGatedRunnerConfiguration.setRunner(pollingMessageReceiver);
-		SemaphoreGatedRunnerImpl semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(semaphore,
-				config.getSemaphoreGatedRunnerConfiguration());
-
-		if(config.getGate() != null){
-			// When a gate is provided a GatedRunner will be the main runner.
-			runner = new GatedRunner(config.getGate(), semaphoreGatedRunner);
-		}else{
-			// Without a gate, the semaphoreGatedRunner will be the main runner.
-			runner = semaphoreGatedRunner;
-		}
+		this.runner = new SemaphoreGatedRunnerImpl(semaphore,
+				config.getSemaphoreGatedRunnerConfiguration(), config.getGate());
 	}
 
 	@Override
