@@ -12,7 +12,6 @@ public class SemaphoreGatedRunnerConfiguration {
 	String lockKey;
 	long lockTimeoutSec = -1;
 	int maxLockCount = -1;
-	boolean useProgressHeartbeat = false;
 
 	public SemaphoreGatedRunnerConfiguration() {
 		super();
@@ -128,24 +127,6 @@ public class SemaphoreGatedRunnerConfiguration {
 	 */
 	public void setMaxLockCount(int maxLockCount) {
 		this.maxLockCount = maxLockCount;
-	}
-
-	/**
-	 * When set to true a heartbeat progress event will automatically be generated
-	 * as long as  the runner is running.
-	 * @return
-	 */
-	public boolean useProgressHeartbeat() {
-		return useProgressHeartbeat;
-	}
-
-	/**
-	 * When set to true a heartbeat progress event will automatically be generated
-	 * as long as  the runner is running.
-	 * @param useProgressHeartbeat
-	 */
-	public void setUseProgressHeartbeat(boolean useProgressHeartbeat) {
-		this.useProgressHeartbeat = useProgressHeartbeat;
 	}
 
 	

@@ -127,41 +127,10 @@ public class MessageDrivenWorkerStackTest {
 		doThrow(LockKeyNotFoundException.class).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());
 	}
 
-	@Test
-	public void testHappyRun() throws RecoverableMessageException, Exception {
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, config);
-		// call under test
-		stack.run();
-		// happy case a message should be passed to the runner.
-		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
-	}
-	
-	@Test
-	public void testRunGateFalse() throws RecoverableMessageException, Exception {
-		when(mockGate.canRun()).thenReturn(false);
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, config);
-		// call under test
-		stack.run();
-		verify(mockRunner, never()).run(any(ProgressCallback.class), any(Message.class));
-	}
-	
-	@Test
-	public void testHappyNullGate() throws RecoverableMessageException, Exception {
-		// gate is not required
-		config.setGate(null);
-		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
-				mockSemaphore, mockSQSClient, config);
-		// call under test
-		stack.run();
-		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
-	}
 	
 	@Test
 	public void testProgressHeartbeatEnabled() throws RecoverableMessageException, Exception {
 		// enable heartbeat.
-		config.setUseProgressHeartbeat(true);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, config);
 
@@ -188,7 +157,6 @@ public class MessageDrivenWorkerStackTest {
 	@Test
 	public void testProgressHeartbeatDisabled() throws RecoverableMessageException, Exception {
 		// disable heartbeat.
-		config.setUseProgressHeartbeat(false);
 		MessageDrivenWorkerStack stack = new MessageDrivenWorkerStack(
 				mockSemaphore, mockSQSClient, config);
 		
