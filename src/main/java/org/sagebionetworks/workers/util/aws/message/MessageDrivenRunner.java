@@ -2,7 +2,7 @@ package org.sagebionetworks.workers.util.aws.message;
 
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 
-import com.amazonaws.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.Message;
 
 /**
  * Abstraction for a runner that is driven by an AWS SQS Message.

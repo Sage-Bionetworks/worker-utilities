@@ -12,24 +12,25 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 
+import com.mysql.cj.MessageBuilder;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
-import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
-import com.amazonaws.services.sqs.model.DeleteMessageRequest;
-import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
-import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 
 public class PollingMessageReceiverImplTest {
 
 	@Mock
-	AmazonSQSClient mockAmazonSQSClient;
+	SqsClient mockAmazonSQSClient;
 	@Mock
 	MessageDrivenRunner mockRunner;
 	@Mock
@@ -54,16 +55,12 @@ public class PollingMessageReceiverImplTest {
 		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
 
 		// setup for a single message.
-		ReceiveMessageResult results = new ReceiveMessageResult();
-		message = new Message();
-		message.setReceiptHandle("handle");
-		results.setMessages(Arrays.asList(message));
-		ReceiveMessageResult emptyResults = new ReceiveMessageResult();
-		emptyResults.setMessages(new LinkedList<Message>());
-		when(
-				mockAmazonSQSClient
-						.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(results, emptyResults);
+		message = Message.builder().receiptHandle("handle").build();
+		ReceiveMessageResponse results = ReceiveMessageResponse.builder()
+				.messages(Collections.singletonList(message)).build();
+		ReceiveMessageResponse emptyResults = ReceiveMessageResponse.builder()
+				.messages(Collections.emptyList()).build();
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
 
 		config = new PollingMessageReceiverConfiguration();
 		config.setHasQueueUrl(mockHasQueueUrl);
@@ -99,7 +96,7 @@ public class PollingMessageReceiverImplTest {
 
 	@Test
 	public void testRunNullMessages() throws Throwable {
-		ReceiveMessageResult results = new ReceiveMessageResult();
+		ReceiveMessageResponse results = ReceiveMessageResponse.builder().build();
 		when(
 				mockAmazonSQSClient
 						.receiveMessage(any(ReceiveMessageRequest.class)))
@@ -116,12 +113,12 @@ public class PollingMessageReceiverImplTest {
 
 	@Test
 	public void testRunEmptyMessages() throws Throwable {
-		ReceiveMessageResult results = new ReceiveMessageResult();
-		results.setMessages(new LinkedList<Message>());
+		ReceiveMessageResponse emptyResults = ReceiveMessageResponse.builder()
+				.messages(Collections.emptyList()).build();
 		when(
 				mockAmazonSQSClient
 						.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(results);
+				.thenReturn(emptyResults);
 
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
@@ -134,9 +131,10 @@ public class PollingMessageReceiverImplTest {
 
 	@Test(expected = IllegalStateException.class)
 	public void testRunTooMessages() throws Exception {
-		ReceiveMessageResult results = new ReceiveMessageResult();
-		Message message = new Message();
-		results.setMessages(Arrays.asList(message, message));
+		Message message = Message.builder().build();
+		ReceiveMessageResponse results = ReceiveMessageResponse.builder()
+				.messages(Arrays.asList(message, message))
+				.build();
 		when(
 				mockAmazonSQSClient
 						.receiveMessage(any(ReceiveMessageRequest.class)))
@@ -159,9 +157,9 @@ public class PollingMessageReceiverImplTest {
 		verify(mockRunner, times(1)).run(any(ProgressCallback.class),
 				any(Message.class));
 		// The message should be deleted
-		DeleteMessageRequest deleteMessageRequest = new DeleteMessageRequest();
-		deleteMessageRequest.setQueueUrl(queueUrl);
-		deleteMessageRequest.setReceiptHandle(message.getReceiptHandle());
+		DeleteMessageRequest deleteMessageRequest = DeleteMessageRequest.builder()
+			.queueUrl(queueUrl)
+			.receiptHandle(message.receiptHandle()).build();
 		verify(mockAmazonSQSClient, times(1)).deleteMessage(
 				deleteMessageRequest);
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
@@ -187,9 +185,9 @@ public class PollingMessageReceiverImplTest {
 			// expected
 		}
 		// The message should be deleted for any non-RecoverableMessageException
-		DeleteMessageRequest deleteMessageRequest = new DeleteMessageRequest();
-		deleteMessageRequest.setQueueUrl(queueUrl);
-		deleteMessageRequest.setReceiptHandle(message.getReceiptHandle());
+		DeleteMessageRequest deleteMessageRequest = DeleteMessageRequest.builder()
+				.queueUrl(queueUrl)
+				.receiptHandle(message.receiptHandle()).build();
 		verify(mockAmazonSQSClient, times(1)).deleteMessage(
 				deleteMessageRequest);
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
@@ -213,9 +211,11 @@ public class PollingMessageReceiverImplTest {
 		verify(mockAmazonSQSClient, never()).deleteMessage(
 				any(DeleteMessageRequest.class));
 		// The visibility of the message should be reset
-		ChangeMessageVisibilityRequest expectedRequest = new ChangeMessageVisibilityRequest(
-				this.queueUrl, this.message.getReceiptHandle(),
-				PollingMessageReceiverImpl.RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC);
+		ChangeMessageVisibilityRequest expectedRequest = ChangeMessageVisibilityRequest.builder()
+				.queueUrl(this.queueUrl)
+				.receiptHandle(this.message.receiptHandle())
+				.visibilityTimeout(PollingMessageReceiverImpl.RETRY_MESSAGE_VISIBILITY_TIMEOUT_SEC)
+				.build();
 		verify(mockAmazonSQSClient, times(1)).changeMessageVisibility(
 				expectedRequest);
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
@@ -228,9 +228,9 @@ public class PollingMessageReceiverImplTest {
 				mockAmazonSQSClient, config);
 
 		//always return a message
-		ReceiveMessageResult results = new ReceiveMessageResult();
-		Message message = new Message();
-		results.setMessages(Collections.singletonList(message));
+		Message message = Message.builder().build();
+		ReceiveMessageResponse results = ReceiveMessageResponse.builder()
+				.messages(Collections.singletonList(message)).build();
 		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenAnswer((invocationOnMock) -> results);
 
 		//should not terminate for 3 times that we check.

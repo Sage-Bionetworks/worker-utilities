@@ -7,23 +7,28 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.runners.MockitoJUnitRunner;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlResponse;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
-import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchRequest;
-import com.amazonaws.services.sqs.model.GetQueueUrlResult;
-import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.QueueDoesNotExistException;
-import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
-import com.amazonaws.services.sqs.model.ReceiveMessageResult;
-
+@RunWith(MockitoJUnitRunner.class)
 public class QueueCleanerTest {
-
-	AmazonSQSClient mockAmazonSQSClient;
+	@Mock
+	SqsClient mockAmazonSQSClient;
 	String queueUrl;
 	QueueCleaner queueCleaner;
 
@@ -31,21 +36,20 @@ public class QueueCleanerTest {
 	public void before() {
 		queueUrl = "aQueueUrl";
 
-		mockAmazonSQSClient = Mockito.mock(AmazonSQSClient.class);
-		when(mockAmazonSQSClient.getQueueUrl(anyString())).thenReturn(
-				new GetQueueUrlResult().withQueueUrl(queueUrl));
+		when(mockAmazonSQSClient.getQueueUrl(any(GetQueueUrlRequest.class))).thenReturn(
+				GetQueueUrlResponse.builder().queueUrl(queueUrl).build());
 
 		// Simulate two batches to delete
-		ReceiveMessageResult pageOne = new ReceiveMessageResult();
-		pageOne.setMessages(Arrays.asList(new Message().withMessageId("id1")
-				.withReceiptHandle("h1"), new Message().withMessageId("id2")
-				.withReceiptHandle("h2")));
-		ReceiveMessageResult pageTwo = new ReceiveMessageResult();
-		pageTwo.setMessages(Arrays.asList(new Message().withMessageId("id3")
-				.withReceiptHandle("h3")));
+		ReceiveMessageResponse pageOne = ReceiveMessageResponse.builder()
+				.messages(Arrays.asList(
+						Message.builder().messageId("id1").receiptHandle("h1").build(),
+						Message.builder().messageId("id2").receiptHandle("h2").build()))
+				.build();
+		ReceiveMessageResponse pageTwo = ReceiveMessageResponse.builder()
+				.messages(Collections.singletonList(Message.builder().messageId("id3").receiptHandle("h3").build()))
+				.build();
 		// page three is empty.
-		ReceiveMessageResult pageThree = new ReceiveMessageResult();
-		pageThree.setMessages(new LinkedList<Message>());
+		ReceiveMessageResponse pageThree = ReceiveMessageResponse.builder().messages(Collections.emptyList()).build();
 		when(
 				mockAmazonSQSClient
 						.receiveMessage(any(ReceiveMessageRequest.class)))
@@ -65,7 +69,7 @@ public class QueueCleanerTest {
 	
 	@Test
 	public void testQueueDoesNotExist(){
-		when(mockAmazonSQSClient.getQueueUrl(anyString())).thenThrow(new QueueDoesNotExistException("Not found"));
+		when(mockAmazonSQSClient.getQueueUrl(any(GetQueueUrlRequest.class))).thenThrow(QueueDoesNotExistException.builder().message("Not found").build());
 		// should not fail.
 		queueCleaner.purgeQueue("someQueue");
 	}

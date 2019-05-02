@@ -15,11 +15,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,28 +32,20 @@ import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.database.semaphore.LockKeyNotFoundException;
 import org.sagebionetworks.workers.util.Gate;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlResponse;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
-import com.amazonaws.services.sns.AmazonSNSClient;
-import com.amazonaws.services.sns.model.CreateTopicRequest;
-import com.amazonaws.services.sns.model.CreateTopicResult;
-import com.amazonaws.services.sns.model.ListSubscriptionsByTopicRequest;
-import com.amazonaws.services.sns.model.ListSubscriptionsByTopicResult;
-import com.amazonaws.services.sns.model.Subscription;
-import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
-import com.amazonaws.services.sqs.model.CreateQueueRequest;
-import com.amazonaws.services.sqs.model.CreateQueueResult;
-import com.amazonaws.services.sqs.model.GetQueueAttributesRequest;
-import com.amazonaws.services.sqs.model.GetQueueAttributesResult;
-import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
-import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MessageDrivenWorkerStackTest {
 
 	@Mock
-	AmazonSQSClient mockSQSClient;
+	SqsClient mockSQSClient;
 	@Mock
 	CountingSemaphore mockSemaphore;
 	@Mock
@@ -89,12 +81,13 @@ public class MessageDrivenWorkerStackTest {
 		when(mockGate.canRun()).thenReturn(true);
 
 		// mock message receiver
-		ReceiveMessageResult results = new ReceiveMessageResult();
-		message = new Message();
-		message.setReceiptHandle("handle");
-		results.setMessages(Arrays.asList(message));
-		ReceiveMessageResult emptyResults = new ReceiveMessageResult();
-		emptyResults.setMessages(new LinkedList<Message>());
+		message = Message.builder()
+				.receiptHandle("handle").build();
+		ReceiveMessageResponse results = ReceiveMessageResponse.builder()
+				.messages(Collections.singletonList(message)).build();
+
+		ReceiveMessageResponse emptyResults = ReceiveMessageResponse.builder()
+				.messages(Collections.emptyList()).build();
 		when(mockSQSClient.receiveMessage(any(ReceiveMessageRequest.class)))
 				.thenReturn(results, emptyResults);
 
@@ -121,7 +114,7 @@ public class MessageDrivenWorkerStackTest {
 		}).when(mockRunner)
 				.run(any(ProgressCallback.class), any(Message.class));
 
-		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
+		when(mockSQSClient.getQueueUrl(any(GetQueueUrlRequest.class))).thenReturn(GetQueueUrlResponse.builder().queueUrl(queueUrl).build());
 
 		//make sure we don't sit in a infinite while loop in PollingMessageReceiverImpl
 		doThrow(LockKeyNotFoundException.class).when(mockSemaphore).refreshLockTimeout(anyString(),anyString(), anyLong());

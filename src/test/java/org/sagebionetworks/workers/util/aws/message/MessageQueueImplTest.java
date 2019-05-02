@@ -10,34 +10,22 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
-import com.amazonaws.services.cloudwatch.model.PutMetricAlarmRequest;
-import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import com.amazonaws.services.sns.AmazonSNSClient;
-import com.amazonaws.services.sns.model.CreateTopicRequest;
-import com.amazonaws.services.sns.model.CreateTopicResult;
-import com.amazonaws.services.sns.model.ListSubscriptionsByTopicRequest;
-import com.amazonaws.services.sns.model.ListSubscriptionsByTopicResult;
-import com.amazonaws.services.sns.model.Subscription;
-import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.CreateQueueRequest;
-import com.amazonaws.services.sqs.model.CreateQueueResult;
-import com.amazonaws.services.sqs.model.GetQueueAttributesRequest;
-import com.amazonaws.services.sqs.model.GetQueueAttributesResult;
-import com.amazonaws.services.sqs.model.SetQueueAttributesRequest;
 import org.mockito.runners.MockitoJUnitRunner;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlResponse;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MessageQueueImplTest {
 
 	@Mock
-	AmazonSQSClient mockSQSClient;
+	SqsClient mockSQSClient;
 
 	String queueUrl;
 	MessageQueueConfiguration config;
@@ -51,7 +39,7 @@ public class MessageQueueImplTest {
 		config.setQueueName("queueName");
 		config.setEnabled(true);
 
-		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
+		when(mockSQSClient.getQueueUrl(any(GetQueueUrlRequest.class))).thenReturn(GetQueueUrlResponse.builder().queueUrl(queueUrl).build());
 	}
 
 	@Test
@@ -62,7 +50,7 @@ public class MessageQueueImplTest {
 		config.setEnabled(true);
 		MessageQueueImpl msgQImpl = new MessageQueueImpl(mockSQSClient, config);
 		assertEquals(queueUrl, msgQImpl.getQueueUrl());
-		verify(mockSQSClient).getQueueUrl(queueName);
+		verify(mockSQSClient).getQueueUrl(GetQueueUrlRequest.builder().queueName(queueName).build());
 		verifyNoMoreInteractions(mockSQSClient);
 	}
 }

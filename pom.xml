@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.sagebionetworks</groupId>
 	<artifactId>worker-utilities</artifactId>
-	<version>1.1.1</version>
+	<version>2.0.0</version>
 	<repositories>
 		<repository>
 			<id>sagebionetworks-releases-local</id>
@@ -52,9 +52,9 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk</artifactId>
-			<version>1.11.46</version>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>sqs</artifactId>
+			<version>${software.amazon.awssdk}</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -127,6 +127,7 @@
 
 	<properties>
 		<spring.version>4.1.6.RELEASE</spring.version>
+		<software.amazon.awssdk>2.5.34</software.amazon.awssdk>
 	</properties>
 
 	<distributionManagement>

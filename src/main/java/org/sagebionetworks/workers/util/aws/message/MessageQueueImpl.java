@@ -1,11 +1,11 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlResponse;
 
-import com.amazonaws.services.sns.AmazonSNSClient;
-import com.amazonaws.services.sqs.AmazonSQSClient;
 
 /**
  * Provides information about an AWS SQS queue. The constructor will create a
@@ -33,7 +33,7 @@ public class MessageQueueImpl implements MessageQueue {
 	// The first argument is the ARN of the queue, and the second is the ARN of the topic.
 	public static final String GRAN_SET_MESSAGE_TEMPLATE = "{ \"Id\":\"GrantRepoTopicSendMessage\", \"Statement\": [{ \"Sid\":\"1\",  \"Resource\": \"%1$s\", \"Effect\": \"Allow\", \"Action\": \"SQS:SendMessage\", \"Condition\": {\"ArnEquals\": {\"aws:SourceArn\": %2$s}}, \"Principal\": {\"AWS\": \"*\"}}]}";
 
-	private AmazonSQSClient awsSQSClient;
+	private SqsClient awsSQSClient;
 
 	private final String queueName;
 	private String queueUrl;
@@ -43,7 +43,7 @@ public class MessageQueueImpl implements MessageQueue {
 	 * @param awsSQSClient An AmazonSQSClient configured with credentials.
 	 * @param config Configuration information for this queue.
 	 */
-	public MessageQueueImpl(AmazonSQSClient awsSQSClient,
+	public MessageQueueImpl(SqsClient awsSQSClient,
 							MessageQueueConfiguration config) {
 		this.awsSQSClient = awsSQSClient;
 		this.isEnabled = config.isEnabled();
@@ -61,8 +61,8 @@ public class MessageQueueImpl implements MessageQueue {
 			return;
 		}
 
-		GetQueueUrlResult result = awsSQSClient.getQueueUrl(queueName);
-		this.queueUrl = result.getQueueUrl();
+		GetQueueUrlResponse result = awsSQSClient.getQueueUrl(GetQueueUrlRequest.builder().queueName(queueName).build());
+		this.queueUrl = result.queueUrl();
 	}
 
 	@Override

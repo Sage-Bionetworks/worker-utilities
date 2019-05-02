@@ -8,13 +8,12 @@ import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
 import org.sagebionetworks.workers.util.Gate;
-
-import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
-import com.amazonaws.services.sqs.model.DeleteMessageRequest;
-import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
-import com.amazonaws.services.sqs.model.ReceiveMessageResult;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
 /**
  * A MessageReceiver that uses long polling to fetch messages from AWS SQS.
@@ -41,7 +40,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	 */
 	public static int MIN_SEMAPHORE_LOCK_TIMEOUT_SEC = MAX_MESSAGE_POLL_TIME_SEC * 2;
 
-	final AmazonSQSClient amazonSQSClient;
+	final SqsClient amazonSQSClient;
 	final String messageQueueUrl;
 	final Integer messageVisibilityTimeoutSec;
 	final MessageDrivenRunner runner;
@@ -54,7 +53,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	 * @param config
 	 *            Configuration information for this message receiver.
 	 */
-	public PollingMessageReceiverImpl(AmazonSQSClient amazonSQSClient,
+	public PollingMessageReceiverImpl(SqsClient amazonSQSClient,
 			PollingMessageReceiverConfiguration config) {
 		super();
 		if (amazonSQSClient == null) {
@@ -132,19 +131,20 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	 */
 	private Message pollForMessage(){
 		log.trace("Getting message for " + runner.getClass().getSimpleName());
-		ReceiveMessageRequest request = new ReceiveMessageRequest();
-		request.setMaxNumberOfMessages(1);
-		request.setQueueUrl(this.messageQueueUrl);
-		request.setVisibilityTimeout(this.messageVisibilityTimeoutSec);
-		// NOTE: it is very important that setWaitTimeSeconds is kept at 0. Otherwise,
+		ReceiveMessageRequest request = ReceiveMessageRequest.builder()
+				.maxNumberOfMessages(1)
+				.queueUrl(this.messageQueueUrl)
+				.visibilityTimeout(this.messageVisibilityTimeoutSec)
+		// NOTE: it is very important that waitTimeSeconds is kept at 0. Otherwise,
 		// the call will wait by holding on to a connection the connection pool,
 		// thus preventing other worker threads from checking for messages until this thread receives a message.
-		request.setWaitTimeSeconds(0);
+				.waitTimeSeconds(0)
+				.build();
 		// Poll for one message.
-		ReceiveMessageResult results = this.amazonSQSClient
+		ReceiveMessageResponse results = this.amazonSQSClient
 				.receiveMessage(request);
 		if (results != null) {
-			List<Message> messages = results.getMessages();
+			List<Message> messages = results.messages();
 			if (messages != null && !messages.isEmpty()) {
 				if (messages.size() != 1) {
 					throw new IllegalStateException(
@@ -212,7 +212,10 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	 * @param message
 	 */
 	protected void deleteMessage(Message message) {
-		this.amazonSQSClient.deleteMessage(new DeleteMessageRequest(this.messageQueueUrl, message.getReceiptHandle()));
+		this.amazonSQSClient.deleteMessage(DeleteMessageRequest.builder()
+				.queueUrl(this.messageQueueUrl)
+				.receiptHandle(message.receiptHandle())
+				.build());
 	}
 
 	/**
@@ -231,10 +234,11 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	 * @param visibilityTimeoutSec
 	 */
 	protected void resetMessageVisibilityTimeout(Message message, int visibilityTimeoutSec) {
-		ChangeMessageVisibilityRequest changeRequest = new ChangeMessageVisibilityRequest();
-		changeRequest.setQueueUrl(this.messageQueueUrl);
-		changeRequest.setReceiptHandle(message.getReceiptHandle());
-		changeRequest.setVisibilityTimeout(visibilityTimeoutSec);
+		ChangeMessageVisibilityRequest changeRequest = ChangeMessageVisibilityRequest.builder()
+				.queueUrl(this.messageQueueUrl)
+				.receiptHandle(message.receiptHandle())
+				.visibilityTimeout(visibilityTimeoutSec)
+				.build();
 		this.amazonSQSClient.changeMessageVisibility(changeRequest);
 	}
 }

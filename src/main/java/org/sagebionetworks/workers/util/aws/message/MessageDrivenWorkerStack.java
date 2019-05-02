@@ -1,12 +1,10 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerImpl;
+import software.amazon.awssdk.services.sqs.SqsClient;
 
-import com.amazonaws.services.sns.AmazonSNSClient;
-import com.amazonaws.services.sqs.AmazonSQSClient;
 
 /**
  * A message driven worker consists of three layers:
@@ -26,7 +24,7 @@ public class MessageDrivenWorkerStack implements Runnable {
 	Runnable runner;
 
 	public MessageDrivenWorkerStack(CountingSemaphore semaphore,
-									AmazonSQSClient awsSQSClient,
+									SqsClient awsSQSClient,
 									MessageDrivenWorkerStackConfiguration config) {
 		// create the queue
 		MessageQueueConfiguration queueConfig = config
