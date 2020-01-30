@@ -69,7 +69,7 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 			final String lockToken = semaphore.attemptToAcquireLock(
 					this.lockKey, this.lockTimeoutSec, this.maxLockCount);
 			// start with a new callback.
-			ProgressCallback progressCallback = new SynchronizedProgressCallback();
+			ProgressCallback progressCallback = new SynchronizedProgressCallback(this.lockTimeoutSec);
 			// listen to progress events
 			ProgressListener listener = new ProgressListener() {
 

@@ -45,7 +45,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	 * @see org.sagebionetworks.workers.util.semaphore.WriteReadSemaphoreRunner#tryRunWithWriteLock(java.lang.String, long, org.sagebionetworks.workers.util.progress.ProgressingCallable)
 	 */
 	@Override
-	public <R, T> R tryRunWithWriteLock(final ProgressCallback callback, final String lockKey, final int lockTimeoutSec,
+	public <R, T> R tryRunWithWriteLock(final ProgressCallback callback, final String lockKey,
 			ProgressingCallable<R> callable) throws Exception {
 		if(callback == null){
 			throw new IllegalArgumentException("ProgressCallback cannot be null");
@@ -53,7 +53,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}
-		if(lockTimeoutSec < MINIMUM_LOCK_TIMEOUT_SEC){
+		if(callback.getLockTimeoutSeconds() < MINIMUM_LOCK_TIMEOUT_SEC){
 			throw new IllegalArgumentException("LockTimeout cannot be less than 2 seconds");
 		}
 		if(callable == null){
@@ -64,7 +64,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		final String writerLockKey = createWriterLockKey(lockKey);
 
 		//reserve a writer token if possible
-		String writerToken = this.countingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, WRITER_MAX_LOCKS);
+		String writerToken = this.countingSemaphore.attemptToAcquireLock(writerLockKey, callback.getLockTimeoutSeconds(), WRITER_MAX_LOCKS);
 		if(writerToken == null){
 			throw new LockUnavilableException("Cannot get an write lock for key:"+lockKey);
 		}
@@ -72,7 +72,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		//We have the lockToken, but we must also assure that all readers are done before proceeding.
 		while(countingSemaphore.existsUnexpiredLock(readerLockKey)){
 			//refresh lock to include the time we sleep waiting for reader to finish
-			this.countingSemaphore.refreshLockTimeout(writerLockKey, writerToken,THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec);
+			this.countingSemaphore.refreshLockTimeout(writerLockKey, writerToken,THROTTLE_SLEEP_FREQUENCY_MS + callback.getLockTimeoutSeconds());
 			log.debug("Waiting for reader locks to release on key: "+lockKey+"...");
 			clock.sleep(THROTTLE_SLEEP_FREQUENCY_MS);
 		}
@@ -81,7 +81,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		// Listen to progress events
 		ProgressListener listener = () -> {
 			// as progress is made refresh the write lock
-			countingSemaphore.refreshLockTimeout(writerLockKey, writerToken, lockTimeoutSec);
+			countingSemaphore.refreshLockTimeout(writerLockKey, writerToken, callback.getLockTimeoutSeconds());
 		};
 		callback.addProgressListener(listener);
 
@@ -100,7 +100,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	 * @see org.sagebionetworks.workers.util.semaphore.WriteReadSemaphoreRunner#tryRunWithReadLock(java.lang.String, long, org.sagebionetworks.workers.util.progress.ProgressingCallable)
 	 */
 	@Override
-	public <R,T> R tryRunWithReadLock(final ProgressCallback callback, final String lockKey, final int lockTimeoutSec,
+	public <R,T> R tryRunWithReadLock(final ProgressCallback callback, final String lockKey,
 			final ProgressingCallable<R> callable) throws Exception {
 		if(callback == null){
 			throw new IllegalArgumentException("ProgressCallback cannot be null");
@@ -108,7 +108,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		if(lockKey == null){
 			throw new IllegalArgumentException("LockKey cannot be null");
 		}
-		if(lockTimeoutSec < MINIMUM_LOCK_TIMEOUT_SEC){
+		if(callback.getLockTimeoutSeconds() < MINIMUM_LOCK_TIMEOUT_SEC){
 			throw new IllegalArgumentException("LockTimeout cannot be less than 2 seconds");
 		}
 		if(callable == null){
@@ -125,14 +125,14 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		}
 
 		//Try to acquire read lock
-		final String readToken = this.countingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxNumberOfReaders);
+		final String readToken = this.countingSemaphore.attemptToAcquireLock(readerLockKey, callback.getLockTimeoutSeconds(), maxNumberOfReaders);
 		if(readToken == null){
 			throw new LockUnavilableException("Cannot get an read lock for key:"+lockKey);
 		}
 		// listen to callback events
 		ProgressListener listener = () -> {
 			// refresh the read lock as progress is made.
-			countingSemaphore.refreshLockTimeout(readerLockKey, readToken, lockTimeoutSec);
+			countingSemaphore.refreshLockTimeout(readerLockKey, readToken, callback.getLockTimeoutSeconds());
 		};
 		callback.addProgressListener(listener);
 		
