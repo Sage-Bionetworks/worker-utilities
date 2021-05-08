@@ -5,7 +5,7 @@ package org.sagebionetworks.workers.util.aws.message;
  * this time but it should be possible to process it in the future.
  * 
  */
-public class RecoverableMessageException extends Exception {
+public class RecoverableMessageException extends RuntimeException {
 
 	private static final long serialVersionUID = 1L;
 
