@@ -246,4 +246,22 @@ public class PollingMessageReceiverImplTest {
 		verify(mockProgressCallback, times(4)).addProgressListener(any(ProgressListener.class));
 		verify(mockProgressCallback, times(4)).removeProgressListener(any(ProgressListener.class));
 	}
+	
+	@Test
+	public void testDeleteOnShutdown() throws Throwable {
+		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
+				mockAmazonSQSClient, config);
+
+		// Simulate a JVM shutdown.
+		receiver.forceShutdown();
+		// call under test
+		receiver.run(mockProgressCallback);
+		verify(mockRunner, times(1)).run(any(ProgressCallback.class),
+				any(Message.class));
+		// The message should not be deleted after a shutdown.
+		verify(mockAmazonSQSClient, never()).deleteMessage(any());
+		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
+		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
+	}
+	
 }

@@ -41,11 +41,13 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	 */
 	public static int MIN_SEMAPHORE_LOCK_TIMEOUT_SEC = MAX_MESSAGE_POLL_TIME_SEC * 2;
 
-	final AmazonSQSClient amazonSQSClient;
-	final String messageQueueUrl;
-	final Integer messageVisibilityTimeoutSec;
-	final MessageDrivenRunner runner;
-	final Gate gate;
+	private final AmazonSQSClient amazonSQSClient;
+	private final String messageQueueUrl;
+	private final Integer messageVisibilityTimeoutSec;
+	private final MessageDrivenRunner runner;
+	private final Gate gate;
+	// We do not want to delete any messages when the JVM is being shut down. PLFM-6758.
+	private volatile boolean isShutdown = false; 
 
 	/**
 	 * 
@@ -100,6 +102,13 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 				.getMessageVisibilityTimeoutSec();
 		this.gate = config.getGate();
 		this.runner = config.getRunner();
+		
+		isShutdown = false;
+		// We need to know when the JVM is shutting down.
+		Runtime.getRuntime().addShutdownHook(new Thread(()->{
+			isShutdown = true;
+			log.warn("JVM is shutting down. No messages will be deleted.");
+		}));
 	}
 
 	/*
@@ -205,6 +214,13 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 		}
 	}
 	
+	/**
+	 * Force the permanent shutdown of this object.
+	 */
+	public void forceShutdown() {
+		isShutdown = true;
+	}
+	
 
 	/**
 	 * Delete the given message from the queue.
@@ -212,6 +228,10 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	 * @param message
 	 */
 	protected void deleteMessage(Message message) {
+		if(isShutdown) {
+			log.error(String.format("The message will not be deleted because the JVM is shutting down. QueueUrl: '%s' messageId: '%s'", this.messageQueueUrl, message.getMessageId()));
+			return;
+		}
 		this.amazonSQSClient.deleteMessage(new DeleteMessageRequest(this.messageQueueUrl, message.getReceiptHandle()));
 	}
 
@@ -237,4 +257,5 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 		changeRequest.setVisibilityTimeout(visibilityTimeoutSec);
 		this.amazonSQSClient.changeMessageVisibility(changeRequest);
 	}
+
 }
