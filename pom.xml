@@ -48,7 +48,7 @@
 		<dependency>
 			<groupId>org.sagebionetworks</groupId>
 			<artifactId>database-semaphore</artifactId>
-			<version>3.0.2</version>
+			<version>3.0.4</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
