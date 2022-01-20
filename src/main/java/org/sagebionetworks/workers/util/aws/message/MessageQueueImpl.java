@@ -1,11 +1,10 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sqs.AmazonSQSClient;
+import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 
 /**
  * Provides information about an AWS SQS queue. The constructor will create a
