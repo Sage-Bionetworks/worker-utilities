@@ -52,8 +52,8 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		// simulate 10 seconds between calls.
 		when(mockClock.currentTimeMillis()).thenReturn(0L,1000*10L,1000*20L,1000*30L);
 		lockKey = "123";
-		readerLockKey = WriteReadSemaphoreRunnerImpl.createReaderLockKey(lockKey);
-		writerLockKey = WriteReadSemaphoreRunnerImpl.createWriterLockKey(lockKey);
+		readerLockKey = Constants.createReaderLockKey(lockKey);
+		writerLockKey = Constants.createWriterLockKey(lockKey);
 		lockTimeoutSec = 10L;
 		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
 		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
@@ -69,7 +69,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 			}}).when(mockCallable).call(any(ProgressCallback.class));
 
 		writeToken = "aWriteToken";
-		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, WriteReadSemaphoreRunnerImpl.WRITER_MAX_LOCKS)).thenReturn(writeToken);
+		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(writeToken);
 		
 		readToken = "aReadToken";
 		when(mockCountingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxReaders)).thenReturn(readToken);
@@ -151,7 +151,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	
 	@Test (expected=IllegalArgumentException.class)
 	public void testReadCallalbeSmallTimeout() throws Exception{
-		lockTimeoutSec = WriteReadSemaphoreRunnerImpl.MINIMUM_LOCK_TIMEOUT_SEC-1;
+		lockTimeoutSec = Constants.MINIMUM_LOCK_TIMEOUT_SEC-1;
 		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
 		// call under test.
 		runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
@@ -189,7 +189,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 
 		//verify we never had to wait for readers to release locks because no readers existed
 		verify(mockClock, never()).sleep(anyLong());
-		verify(mockCountingSemaphore, never()).refreshLockTimeout(any(), any(), eq(WriteReadSemaphoreRunnerImpl.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec));
+		verify(mockCountingSemaphore, never()).refreshLockTimeout(any(), any(), eq(Constants.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec));
 	}
 
 	@Test
@@ -211,8 +211,8 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 
 		//verify writer waited for readers to finish
-		verify(mockClock, times(2)).sleep(WriteReadSemaphoreRunnerImpl.THROTTLE_SLEEP_FREQUENCY_MS);
-		verify(mockCountingSemaphore, times(2)).refreshLockTimeout(writerLockKey, writeToken, WriteReadSemaphoreRunnerImpl.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec);
+		verify(mockClock, times(2)).sleep(Constants.THROTTLE_SLEEP_FREQUENCY_MS);
+		verify(mockCountingSemaphore, times(2)).refreshLockTimeout(writerLockKey, writeToken, Constants.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec);
 
 	}
 	
@@ -226,7 +226,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	@Test (expected=LockUnavilableException.class)
 	public void testTryRunWithWriteLockUnavailable() throws Exception{
 		String writeToken = "aWriteToken";
-		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, WriteReadSemaphoreRunnerImpl.WRITER_MAX_LOCKS)).thenReturn(null);
+		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(null);
 		// call under test.
 		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
 	}
@@ -240,7 +240,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	
 	@Test (expected=IllegalArgumentException.class)
 	public void testTryRunWithWriteLockSmallTimeout() throws Exception{
-		lockTimeoutSec = WriteReadSemaphoreRunnerImpl.MINIMUM_LOCK_TIMEOUT_SEC-1;
+		lockTimeoutSec = Constants.MINIMUM_LOCK_TIMEOUT_SEC-1;
 		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
 		// call under test.
 		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
