@@ -72,43 +72,21 @@ public interface WriteReadSemaphoreRunner {
 			String lockKey, ProgressingCallable<R> runner)
 			throws Exception;
 	
+
 	/**
-	 * <p>
-	 * The passed callable will be run while holding a read-lock (shared) on the
-	 * passed resource. The lock will be unconditionally released when the
-	 * runner terminates either normally or with exception.
-	 * </p>
-	 * 
-	 * @param callback
-	 *            Optional (can be null), when provided, any progress made by
-	 *            the callbale will be forwarded to this callback.
-	 * @param lockKey
-	 *            The key that identifies the resource to lock on.
-	 * @param lockTimeoutSec
-	 *            The maximum number of seconds that the lock will be held for.
-	 *            This must be greater than the amount of time the passed runner
-	 *            is expected to run.
-	 * @param runner
-	 *            The call() method of this runner will be called while the lock
-	 *            is being held.
-	 * @return
-	 * @throws LockUnavilableException
-	 *             Thrown if the requested lock cannot be acquired for any
-	 *             reason.
-	 * @throws Exception
-	 */
-	/**
+	 * The passed runner will be run while holding all of the provided read-locks.
+	 * All of the locks will be unconditionally released when the runner terminates
+	 * either normally or with exception.
 	 * 
 	 * @param <R>
 	 * @param <T>
 	 * @param callback
-	 * @param runner
+	 * @param runner To be run while holding the locks
 	 * @param lockKeys One or more keys that identifies the resources to lock on.
 	 * @return
 	 * @throws Exception
 	 */
-	public <R, T> R tryRunWithReadLock(ProgressCallback callback,
-			ProgressingCallable<R> runner, String...lockKeys)
+	public <R> R tryRunWithReadLock(ProgressCallback callback, ProgressingCallable<R> runner, String... lockKeys)
 			throws Exception;
 
 }

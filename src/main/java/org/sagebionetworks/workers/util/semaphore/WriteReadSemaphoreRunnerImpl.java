@@ -95,7 +95,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 	}
 	
 	@Override
-	public <R, T> R tryRunWithReadLock(ProgressCallback callback, ProgressingCallable<R> callable, String... lockKeys)
+	public <R> R tryRunWithReadLock(ProgressCallback callback, ProgressingCallable<R> callable, String... lockKeys)
 			throws Exception {
 		if(callable == null){
 			throw new IllegalArgumentException("Callable cannot be null");
