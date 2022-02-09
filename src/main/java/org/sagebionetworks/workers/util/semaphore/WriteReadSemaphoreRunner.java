@@ -71,5 +71,22 @@ public interface WriteReadSemaphoreRunner {
 	public <R, T> R tryRunWithReadLock(ProgressCallback callback,
 			String lockKey, ProgressingCallable<R> runner)
 			throws Exception;
+	
+
+	/**
+	 * The passed runner will be run while holding all of the provided read-locks.
+	 * All of the locks will be unconditionally released when the runner terminates
+	 * either normally or with exception.
+	 * 
+	 * @param <R>
+	 * @param <T>
+	 * @param callback
+	 * @param runner To be run while holding the locks
+	 * @param lockKeys One or more keys that identifies the resources to lock on.
+	 * @return
+	 * @throws Exception
+	 */
+	public <R> R tryRunWithReadLock(ProgressCallback callback, ProgressingCallable<R> runner, String... lockKeys)
+			throws Exception;
 
 }
