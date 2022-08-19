@@ -75,9 +75,6 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 
 				@Override
 				public void progressMade() {
-					if(!canRun()){ //TODO: test
-						throw new IllegalStateException("Gate closed");
-					}
 					// Give the lock more time
 					semaphore.refreshLockTimeout(lockKey,
 							lockToken, lockTimeoutSec);

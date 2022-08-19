@@ -2,13 +2,12 @@ package org.sagebionetworks.workers.util.semaphore;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -18,8 +17,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
@@ -175,7 +172,7 @@ public class SemaphoreGatedRunnerImplTest {
 	}
 
 	@Test
-	public void testGateProgressMade() throws Exception {
+	public void testRunWithCanRunTrueAndThenFalse() throws Exception {
 		when(mockGate.canRun()).thenReturn(true, false);
 		setupRunnerSleep();
 
@@ -183,7 +180,8 @@ public class SemaphoreGatedRunnerImplTest {
 		semaphoreGatedRunner.run();
 
 		verify(mockRunner).run(any(ProgressCallback.class));
-		verify(mockSemaphore, never()).refreshLockTimeout(anyString(), anyString(), anyLong());
+		// Fix for PLFM-7432: refresh should occur even when canRun() is false.
+		verify(mockSemaphore, atLeast(2)).refreshLockTimeout(anyString(), anyString(), anyLong());
 	}
 
 
