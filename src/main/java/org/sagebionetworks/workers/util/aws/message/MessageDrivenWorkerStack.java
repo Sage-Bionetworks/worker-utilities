@@ -1,11 +1,9 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerConfiguration;
 import org.sagebionetworks.workers.util.semaphore.SemaphoreGatedRunnerImpl;
 
-import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sqs.AmazonSQSClient;
 
 /**
