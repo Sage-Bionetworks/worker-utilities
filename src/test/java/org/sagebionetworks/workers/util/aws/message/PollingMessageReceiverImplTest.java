@@ -1,7 +1,7 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -12,12 +12,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressListener;
+import org.sagebionetworks.workers.util.Gate;
 
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
@@ -27,83 +29,87 @@ import com.amazonaws.services.sqs.model.MessageSystemAttributeName;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 
+@ExtendWith(MockitoExtension.class)
 public class PollingMessageReceiverImplTest {
 
 	@Mock
-	AmazonSQSClient mockAmazonSQSClient;
+	private AmazonSQSClient mockAmazonSQSClient;
 	@Mock
-	MessageDrivenRunner mockRunner;
+	private MessageDrivenRunner mockRunner;
 	@Mock
-	ProgressCallback mockProgressCallback;
+	private ProgressCallback mockProgressCallback;
 	@Mock
-	HasQueueUrl mockHasQueueUrl;
+	private HasQueueUrl mockHasQueueUrl;
+	
+	@Mock
+	private Gate mockGate;
+	
 	PollingMessageReceiverConfiguration config;
 	String queueUrl;
 	int messageVisibilityTimeoutSec;
 	int semaphoreLockTimeoutSec;
+	ReceiveMessageResult results;
+	ReceiveMessageResult emptyResults;
 
 	Message message;
 
-	@Before
+	@BeforeEach
 	public void before() {
-		MockitoAnnotations.initMocks(this);
 		queueUrl = "aQueueUrl";
 		messageVisibilityTimeoutSec = 60;
 		semaphoreLockTimeoutSec = 60;
 
-
-		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
-
 		// setup for a single message.
-		ReceiveMessageResult results = new ReceiveMessageResult();
+		results = new ReceiveMessageResult();
 		message = new Message();
 		message.setReceiptHandle("handle");
 		results.setMessages(Arrays.asList(message));
-		ReceiveMessageResult emptyResults = new ReceiveMessageResult();
+		emptyResults = new ReceiveMessageResult();
 		emptyResults.setMessages(new LinkedList<Message>());
-		
-		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
 
 		config = new PollingMessageReceiverConfiguration();
 		config.setHasQueueUrl(mockHasQueueUrl);
 		config.setRunner(mockRunner);
 		config.setMessageVisibilityTimeoutSec(messageVisibilityTimeoutSec);
 		config.setSemaphoreLockTimeoutSec(semaphoreLockTimeoutSec);
+		config.setGate(mockGate);
 
-		when(mockProgressCallback.runnerShouldTerminate()).thenReturn(true);
 	}
 
 	@Test
 	public void testHappyConstructor() {
-		new PollingMessageReceiverImpl(mockAmazonSQSClient, config);
-	}
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testNullClient() {
-		new PollingMessageReceiverImpl(null, config);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testSemaphoreLockTooSmall() {
-		config.setSemaphoreLockTimeoutSec(39);
-		new PollingMessageReceiverImpl(mockAmazonSQSClient, config);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testSemaphoreLockLessThanVisisibleTimeout() {
-		config.setSemaphoreLockTimeoutSec(config
-				.getMessageVisibilityTimeoutSec() - 1);
 		new PollingMessageReceiverImpl(mockAmazonSQSClient, config);
 	}
 
 	@Test
-	public void testRunNullMessages() throws Throwable {
-		ReceiveMessageResult results = new ReceiveMessageResult();
-		when(
-				mockAmazonSQSClient
-						.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(results);
+	public void testNullClient() {
+		assertThrows(IllegalArgumentException.class, ()->{
+			new PollingMessageReceiverImpl(null, config);
+		});
+	}
 
+	@Test
+	public void testSemaphoreLockTooSmall() {
+		config.setSemaphoreLockTimeoutSec(39);
+		assertThrows(IllegalArgumentException.class, ()->{
+			new PollingMessageReceiverImpl(mockAmazonSQSClient, config);
+		});
+	}
+
+	@Test
+	public void testSemaphoreLockLessThanVisisibleTimeout() {
+		config.setSemaphoreLockTimeoutSec(config
+				.getMessageVisibilityTimeoutSec() - 1);
+		assertThrows(IllegalArgumentException.class, ()->{
+			new PollingMessageReceiverImpl(mockAmazonSQSClient, config);
+		});
+	}
+
+	@Test
+	public void testRunNullMessages() throws Throwable {
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
 
@@ -117,11 +123,7 @@ public class PollingMessageReceiverImplTest {
 	public void testRunEmptyMessages() throws Throwable {
 		ReceiveMessageResult results = new ReceiveMessageResult();
 		results.setMessages(new LinkedList<Message>());
-		when(
-				mockAmazonSQSClient
-						.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(results);
-
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
 
@@ -131,27 +133,33 @@ public class PollingMessageReceiverImplTest {
 				any(Message.class));
 	}
 
-	@Test(expected = IllegalStateException.class)
+	@Test
 	public void testRunTooMessages() throws Exception {
 		ReceiveMessageResult results = new ReceiveMessageResult();
 		Message message = new Message();
 		results.setMessages(Arrays.asList(message, message));
-		when(
-				mockAmazonSQSClient
-						.receiveMessage(any(ReceiveMessageRequest.class)))
-				.thenReturn(results);
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results);
 
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
-
-		// call under test
-		receiver.run(mockProgressCallback);
+		
+		when(mockGate.canRun()).thenReturn(true, false);
+		
+		assertThrows(IllegalStateException.class, ()->{
+			// call under test
+			receiver.run(mockProgressCallback);
+		});
 	}
 
 	@Test
 	public void testOneMessage() throws Throwable {
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
+		
+		when(mockGate.canRun()).thenReturn(true, false);
 
 		// call under test
 		receiver.run(mockProgressCallback);
@@ -170,6 +178,9 @@ public class PollingMessageReceiverImplTest {
 	@Test
 	public void testMessageDeleteOnException()
 			throws Throwable {
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
+
 		// setup the runner to throw an unknown exception
 		doThrow(new IllegalArgumentException("Something was null")).when(
 				mockRunner)
@@ -177,14 +188,13 @@ public class PollingMessageReceiverImplTest {
 
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
-
-		// call under test
-		try {
+		
+		when(mockGate.canRun()).thenReturn(true, false);
+		
+		assertThrows(IllegalArgumentException.class, ()->{
+			// call under test
 			receiver.run(mockProgressCallback);
-			fail("Should have thrown an exception");
-		} catch (IllegalArgumentException e) {
-			// expected
-		}
+		});
 		// The message should be deleted for any non-RecoverableMessageException
 		DeleteMessageRequest deleteMessageRequest = new DeleteMessageRequest();
 		deleteMessageRequest.setQueueUrl(queueUrl);
@@ -198,6 +208,11 @@ public class PollingMessageReceiverImplTest {
 	@Test
 	public void testMessageNoDeleteRecoverableMessageException()
 			throws Throwable {
+		
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
+
+		
 		// setup the runner to throw a RecoverableMessageException
 		doThrow(new RecoverableMessageException("Try again later.")).when(
 				mockRunner)
@@ -205,6 +220,7 @@ public class PollingMessageReceiverImplTest {
 
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
+		when(mockGate.canRun()).thenReturn(true, false);
 
 		// call under test
 		receiver.run(mockProgressCallback);
@@ -224,6 +240,8 @@ public class PollingMessageReceiverImplTest {
 	@Test
 	public void testMessageWithRecoverableMessageException() throws Throwable {
 		
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(mockAmazonSQSClient, config);
 
 		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class)))
@@ -238,6 +256,9 @@ public class PollingMessageReceiverImplTest {
 			message.setAttributes(
 				Collections.singletonMap(MessageSystemAttributeName.ApproximateReceiveCount.toString(), String.valueOf(retryNumber))
 			);
+			
+			when(mockGate.canRun()).thenReturn(true, false);
+			
 			// call under test
 			receiver.run(mockProgressCallback);
 			
@@ -264,6 +285,10 @@ public class PollingMessageReceiverImplTest {
 	public void testMessageWithRecoverableMessageExceptionAndRetryCountExceedMax()
 			throws Throwable {
 		
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
+
+		
 		Integer retryCount = 10;
 		
 		message.setAttributes(
@@ -277,6 +302,8 @@ public class PollingMessageReceiverImplTest {
 
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
+		
+		when(mockGate.canRun()).thenReturn(true, false);
 
 		// call under test
 		receiver.run(mockProgressCallback);
@@ -295,6 +322,9 @@ public class PollingMessageReceiverImplTest {
 	
 	@Test
 	public void testRunnerShouldTerminate() throws Exception {
+		
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
 
@@ -305,7 +335,7 @@ public class PollingMessageReceiverImplTest {
 		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenAnswer((invocationOnMock) -> results);
 
 		//should not terminate for 3 times that we check.
-		when(mockProgressCallback.runnerShouldTerminate()).thenReturn(false, false, false, true);
+		when(mockGate.canRun()).thenReturn(true, true,true,true,false);
 
 		// call under test
 		receiver.run(mockProgressCallback);
@@ -327,8 +357,13 @@ public class PollingMessageReceiverImplTest {
 	
 	@Test
 	public void testDeleteOnShutdown() throws Throwable {
+		when(mockHasQueueUrl.getQueueUrl()).thenReturn(queueUrl);
+		when(mockAmazonSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
+
 		PollingMessageReceiverImpl receiver = new PollingMessageReceiverImpl(
 				mockAmazonSQSClient, config);
+		
+		when(mockGate.canRun()).thenReturn(true, false);
 
 		// Simulate a JVM shutdown.
 		receiver.forceShutdown();

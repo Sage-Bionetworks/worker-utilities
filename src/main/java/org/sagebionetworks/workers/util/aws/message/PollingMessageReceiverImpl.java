@@ -126,7 +126,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 	@Override
 	public void run(final ProgressCallback containerProgressCallback) throws Exception {
 		Message message = null;
-		do {
+		while(true) {
 			if (gate != null && !gate.canRun()) {
 				log.trace(gate.getClass().getSimpleName() +" is closed for " + runner.getClass().getSimpleName());
 				break;
@@ -137,7 +137,7 @@ public class PollingMessageReceiverImpl implements ProgressingRunner {
 			} else {
 				Thread.sleep(1000);
 			}
-		} while (!containerProgressCallback.runnerShouldTerminate());
+		}
 		log.trace("There is no more messages for "+runner.getClass().getSimpleName());
 	}
 	
