@@ -55,7 +55,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		//reserve a writer token if possible
 		String writerToken = this.countingSemaphore.attemptToAcquireLock(writerLockKey, callback.getLockTimeoutSeconds(), Constants.WRITER_MAX_LOCKS);
 		if(writerToken == null){
-			throw new LockUnavilableException("Cannot get n write lock for key:"+lockKey);
+			throw new LockUnavilableException("Cannot get a write lock for key:"+lockKey);
 		}
 
 		//We have the lockToken, but we must also assure that all readers are done before proceeding.
