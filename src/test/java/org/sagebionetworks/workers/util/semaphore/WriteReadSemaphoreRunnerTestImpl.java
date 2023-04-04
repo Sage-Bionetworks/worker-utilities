@@ -210,11 +210,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 
 		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
 		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
-		doAnswer(new Answer<Integer>(){
-			@Override
-			public Integer answer(InvocationOnMock invocation) throws Throwable {
-				return defaultResults;
-			}}).when(mockCallable).call(any(ProgressCallback.class));
+		setupCallbackReturn();
 
 		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(writeToken);
 
@@ -231,7 +227,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 
 		//verify we never had to wait for readers to release locks because no readers existed
 		verify(mockClock, never()).sleep(anyLong());
-		verify(mockCountingSemaphore, never()).refreshLockTimeout(any(), any(), eq(Constants.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec));
+		verify(mockCountingSemaphore, times(3)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
 	}
 
 	@Test
@@ -254,7 +250,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		assertEquals(defaultResults, results);
 		verify(mockCountingSemaphore).releaseLock(writerLockKey, writeToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
-		verify(mockCountingSemaphore, times(3)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
+		verify(mockCountingSemaphore, times(5)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
 
 		// verify that the listener is added and removed.
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
@@ -262,7 +258,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 
 		//verify writer waited for readers to finish
 		verify(mockClock, times(2)).sleep(Constants.THROTTLE_SLEEP_FREQUENCY_MS);
-		verify(mockCountingSemaphore, times(2)).refreshLockTimeout(writerLockKey, writeToken, Constants.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec);
+		verify(mockCountingSemaphore, times(5)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
 
 	}
 	

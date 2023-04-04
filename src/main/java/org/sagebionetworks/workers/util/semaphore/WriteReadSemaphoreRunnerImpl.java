@@ -61,7 +61,7 @@ public class WriteReadSemaphoreRunnerImpl implements WriteReadSemaphoreRunner {
 		//We have the lockToken, but we must also assure that all readers are done before proceeding.
 		while(countingSemaphore.existsUnexpiredLock(readerLockKey)){
 			//refresh lock to include the time we sleep waiting for reader to finish
-			this.countingSemaphore.refreshLockTimeout(writerLockKey, writerToken,Constants.THROTTLE_SLEEP_FREQUENCY_MS + callback.getLockTimeoutSeconds());
+			this.countingSemaphore.refreshLockTimeout(writerLockKey, writerToken, callback.getLockTimeoutSeconds());
 			log.debug("Waiting for reader locks to release on key: "+lockKey+"...");
 			clock.sleep(Constants.THROTTLE_SLEEP_FREQUENCY_MS);
 		}
