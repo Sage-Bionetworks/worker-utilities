@@ -1,10 +1,10 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.eq;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -13,12 +13,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 import org.sagebionetworks.common.util.Clock;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
@@ -26,54 +26,49 @@ import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.common.util.progress.ProgressingCallable;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class WriteReadSemaphoreRunnerTestImpl {
 	
 	@Mock
-	CountingSemaphore mockCountingSemaphore;
+	private CountingSemaphore mockCountingSemaphore;
 	@Mock
-	Clock mockClock;
+	private Clock mockClock;
 	@Mock
-	ProgressCallback mockProgressCallback;
+	private ProgressCallback mockProgressCallback;
 	@Mock
-	ProgressingCallable<Integer> mockCallable;
-	WriteReadSemaphoreRunner runner;
-	String lockKey;
-	String readerLockKey;
-	String writerLockKey;
-	long lockTimeoutSec;
-	Integer defaultResults;
-	String writeToken;
-	String readToken;
-	final int maxReaders = 8;
+	private ProgressingCallable<Integer> mockCallable;
+	private WriteReadSemaphoreRunner runner;
+	private String lockKey;
+	private String readerLockKey;
+	private String writerLockKey;
+	private long lockTimeoutSec;
+	private Integer defaultResults;
+	private String writeToken;
+	private String readToken;
+	private final int maxReaders = 8;
 	
-	@Before
+	@BeforeEach
 	public void before() throws Exception{
-		// simulate 10 seconds between calls.
-		when(mockClock.currentTimeMillis()).thenReturn(0L,1000*10L,1000*20L,1000*30L);
 		lockKey = "123";
 		readerLockKey = Constants.createReaderLockKey(lockKey);
 		writerLockKey = Constants.createWriterLockKey(lockKey);
 		lockTimeoutSec = 10L;
-		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
 		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
-		
 		defaultResults = 999;
-		// Setup the callable to call progressMade()
+		writeToken = "aWriteToken";
+		readToken = "aReadToken";
+		
+	}
+	
+	private void setupCallbackReturn() throws Exception {
 		doAnswer(new Answer<Integer>(){
-
 			@Override
 			public Integer answer(InvocationOnMock invocation) throws Throwable {
-				ProgressCallback callback = (ProgressCallback) invocation.getArguments()[0];
 				return defaultResults;
 			}}).when(mockCallable).call(any(ProgressCallback.class));
-
-		writeToken = "aWriteToken";
-		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(writeToken);
-		
-		readToken = "aReadToken";
-		when(mockCountingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxReaders)).thenReturn(readToken);
-		
+	}
+	
+	private void setupCallbackAddProgressListener() {
 		doAnswer(new Answer<Void>(){
 
 			@Override
@@ -89,6 +84,14 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	
 	@Test
 	public void testReadCallalbeHappy() throws Exception{
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
+		setupCallbackReturn();
+
+		when(mockCountingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxReaders)).thenReturn(readToken);
+
+		setupCallbackAddProgressListener();
+		
 		// call under test.
 		Integer results = runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
 		assertEquals(defaultResults, results);
@@ -99,76 +102,103 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
 		verify(mockProgressCallback).removeProgressListener(any(ProgressListener.class));
 	}
-
 	
-	@Test (expected=IllegalArgumentException.class)
-	public void testReadCallalbeNullCallback() throws Exception{
+	@Test
+	public void testReadCallalbeNullCallback() throws Exception{			
 		// the passed callback can be null
 		mockProgressCallback = null;
-		String readToken = "aReadToken";
-		when(mockCountingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxReaders)).thenReturn(readToken);
-		// call under test.
-		Integer results = runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+
+		assertThrows(IllegalArgumentException.class, ()->{
+			// call under test.
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+		});
+
 	}
 	
-	@Test (expected=LockUnavilableException.class)
+	@Test
 	public void testReadCallalbeLockUnavaiable() throws Exception{
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
+		when(mockCountingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxReaders)).thenReturn(readToken);
+
 		// null token means the lock cannot be acquired.
 		when(mockCountingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxReaders)).thenReturn(null);
-		// call under test.
-		runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+		
+		assertThrows(LockUnavilableException.class, ()->{
+			// call under test.
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+		});
+
 	}
 
 	@Test
 	public void testReadCallalbeWriterAlreadyExists() throws Exception{
+
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
 		when(mockCountingSemaphore.existsUnexpiredLock(writerLockKey)).thenReturn(true);
-		try {
+		
+		assertThrows(LockUnavilableException.class, ()->{
 			// call under test.
 			runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
-			fail();
-		} catch (LockUnavilableException e){
-			//expected
-		}
+		});
 
 		verify(mockCountingSemaphore).existsUnexpiredLock(writerLockKey);
 		verifyNoMoreInteractions(mockCountingSemaphore);
 	}
 
 	
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void testReadCallalbeNullKey() throws Exception{
 		lockKey = null;
-		// call under test.
-		runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+		
+		assertThrows(IllegalArgumentException.class, ()->{
+			// call under test.
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+		});
 	}
 	
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void testReadCallalbeNullCallable() throws Exception{
 		mockCallable = null;
-		// call under test.
-		runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+
+		assertThrows(IllegalArgumentException.class, ()->{
+			// call under test.
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+		});
+
 	}
 	
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void testReadCallalbeSmallTimeout() throws Exception{
 		lockTimeoutSec = Constants.MINIMUM_LOCK_TIMEOUT_SEC-1;
 		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
-		// call under test.
-		runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+
+		assertThrows(IllegalArgumentException.class, ()->{
+			// call under test.
+			runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
+		});
+
 	}
 	
 	
 	@Test
 	public void testReadCallalbeRemoveListenerException() throws Exception{
+
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
+		when(mockCountingSemaphore.attemptToAcquireLock(readerLockKey, lockTimeoutSec, maxReaders)).thenReturn(readToken);
+
+		setupCallbackAddProgressListener();
+		
 		Exception error = new RuntimeException("Failed");
 		doThrow(error).when(mockCallable).call(any(ProgressCallback.class));
-		// call under test.
-		try {
+		
+		assertThrows(RuntimeException.class, ()->{
+			// call under test.
 			runner.tryRunWithReadLock(mockProgressCallback, lockKey, mockCallable);
-			fail("Should have failed");
-		} catch (Exception e) {
-			// expected
-		}
+		});
+		
 		// lock should be release even for an error
 		verify(mockCountingSemaphore).releaseLock(readerLockKey, readToken);
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
@@ -177,6 +207,14 @@ public class WriteReadSemaphoreRunnerTestImpl {
 	
 	@Test
 	public void testTryRunWithWriteLockHappy() throws Exception{
+
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
+		setupCallbackReturn();
+
+		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(writeToken);
+
+		setupCallbackAddProgressListener();
 		// call under test.
 		Integer results = runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
 		assertEquals(defaultResults, results);
@@ -189,11 +227,19 @@ public class WriteReadSemaphoreRunnerTestImpl {
 
 		//verify we never had to wait for readers to release locks because no readers existed
 		verify(mockClock, never()).sleep(anyLong());
-		verify(mockCountingSemaphore, never()).refreshLockTimeout(any(), any(), eq(Constants.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec));
+		verify(mockCountingSemaphore, times(3)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
 	}
 
 	@Test
 	public void testTryRunWithWriteLock_WaitForReaders() throws Exception{
+
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		setupCallbackReturn();
+
+		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(writeToken);
+
+		setupCallbackAddProgressListener();
+		
 		//force the writer to sleep for 2 cycles waiting for readers to release their locks
 		when(mockCountingSemaphore.existsUnexpiredLock(readerLockKey)).thenReturn(true, true, false);
 
@@ -204,7 +250,7 @@ public class WriteReadSemaphoreRunnerTestImpl {
 		assertEquals(defaultResults, results);
 		verify(mockCountingSemaphore).releaseLock(writerLockKey, writeToken);
 		verify(mockCallable).call(any(ProgressCallback.class));
-		verify(mockCountingSemaphore, times(3)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
+		verify(mockCountingSemaphore, times(5)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
 
 		// verify that the listener is added and removed.
 		verify(mockProgressCallback).addProgressListener(any(ProgressListener.class));
@@ -212,58 +258,80 @@ public class WriteReadSemaphoreRunnerTestImpl {
 
 		//verify writer waited for readers to finish
 		verify(mockClock, times(2)).sleep(Constants.THROTTLE_SLEEP_FREQUENCY_MS);
-		verify(mockCountingSemaphore, times(2)).refreshLockTimeout(writerLockKey, writeToken, Constants.THROTTLE_SLEEP_FREQUENCY_MS + lockTimeoutSec);
+		verify(mockCountingSemaphore, times(5)).refreshLockTimeout(writerLockKey, writeToken, lockTimeoutSec);
 
 	}
 	
-	@Test (expected=IllegalArgumentException.class)
-	public void testTryRunWithWriteLockNullCallback() throws Exception{
+	@Test
+	public void testTryRunWithWriteLockNullCallback() throws Exception {
 		mockProgressCallback = null;
-		// call under test.
-		Integer results = runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+
+		assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+		});
+
 	}
 	
-	@Test (expected=LockUnavilableException.class)
+	@Test
 	public void testTryRunWithWriteLockUnavailable() throws Exception{
-		String writeToken = "aWriteToken";
+
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
+		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(writeToken);
 		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(null);
-		// call under test.
-		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+
+		assertThrows(LockUnavilableException.class, () -> {
+			// call under test
+			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+		});
+
 	}
 
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void testTryRunWithWriteLockNullKey() throws Exception{
 		lockKey = null;
-		// call under test.
-		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+	
+		assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+		});
 	}
 	
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void testTryRunWithWriteLockSmallTimeout() throws Exception{
 		lockTimeoutSec = Constants.MINIMUM_LOCK_TIMEOUT_SEC-1;
 		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
-		// call under test.
-		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+		assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+		});
 	}
 	
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void testTryRunWithWriteLockNullCallable() throws Exception{
 		mockCallable = null;
-		// call under test.
-		runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+		assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
+		});
 	}
 	
 	@Test
 	public void testTryRunWithWriteException() throws Exception{
+
+		when(mockProgressCallback.getLockTimeoutSeconds()).thenReturn(lockTimeoutSec);
+		runner = new WriteReadSemaphoreRunnerImpl(mockCountingSemaphore, mockClock, maxReaders);
+		when(mockCountingSemaphore.attemptToAcquireLock(writerLockKey, lockTimeoutSec, Constants.WRITER_MAX_LOCKS)).thenReturn(writeToken);
+
+		setupCallbackAddProgressListener();
+		
 		Exception error = new RuntimeException("An error");
 		doThrow(error).when(mockCallable).call(any(ProgressCallback.class));
-		// call under test.
-		try {
+		assertThrows(RuntimeException.class, () -> {
+			// call under test
 			runner.tryRunWithWriteLock(mockProgressCallback, lockKey, mockCallable);
-			fail("should have failed");
-		} catch (Exception e) {
-			assertEquals(error, e);
-		}
+		});
 		// the write lock should still be released.
 		verify(mockCountingSemaphore).releaseLock(writerLockKey, writeToken);
 		// verify that the listener is added and removed even with an exception.
