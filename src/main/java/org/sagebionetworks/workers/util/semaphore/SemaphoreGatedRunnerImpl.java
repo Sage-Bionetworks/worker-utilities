@@ -1,5 +1,7 @@
 package org.sagebionetworks.workers.util.semaphore;
 
+import java.util.Optional;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.common.util.progress.AutoProgressingRunner;
@@ -66,8 +68,8 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 			}
 
 			// attempt to get a lock
-			final String lockToken = semaphore.attemptToAcquireLock(
-					this.lockKey, this.lockTimeoutSec, this.maxLockCount);
+			final Optional<String> lockTokenOp = semaphore.attemptToAcquireLock(
+					this.lockKey, this.lockTimeoutSec, this.maxLockCount, this.runner.getClass().getName());
 			// start with a new callback.
 			ProgressCallback progressCallback = new SynchronizedProgressCallback(this.lockTimeoutSec);
 			// listen to progress events
@@ -77,19 +79,19 @@ public class SemaphoreGatedRunnerImpl implements SemaphoreGatedRunner {
 				public void progressMade() {
 					// Give the lock more time
 					semaphore.refreshLockTimeout(lockKey,
-							lockToken, lockTimeoutSec);
+							lockTokenOp.get(), lockTimeoutSec);
 				}
 			};
 			progressCallback.addProgressListener(listener);
 
 			// Only proceed if a lock was acquired
-			if (lockToken != null) {
+			if (lockTokenOp.isPresent()) {
 				try {
 					// Let the runner go while holding the lock
 					runner.run(progressCallback);
 				} finally {
 					progressCallback.removeProgressListener(listener);
-					semaphore.releaseLock(this.lockKey, lockToken);
+					semaphore.releaseLock(this.lockKey, lockTokenOp.get());
 				}
 			}
 		}catch (LockReleaseFailedException e){
