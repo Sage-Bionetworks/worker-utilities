@@ -1,12 +1,7 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import org.sagebionetworks.common.util.progress.ProgressingCallable;
-
 /**
- * An abstraction for a semaphore that will run a {@link ProgressingCallable}
- * while holding either a write-lock (exclusive) or read-lock (shared). The
- * locks will be unconditionally released when the runner terminates either
- * normally or with exception.
+ * An abstraction to provide either shared read locks or exclusive write locks.
  * 
  */
 public interface WriteReadSemaphore {
@@ -14,7 +9,21 @@ public interface WriteReadSemaphore {
 	/**
 	 * Get a write lock provider for the given request. This method should be called
 	 * from within a try-with-resource to ensure the acquired lock is automatically
-	 * released, even for failures.
+	 * released, even for failures. For example:
+	 * <pre>
+		try(WriteLockProvider provider = writeReadSemaphore.getWriteLockProvider(request)){
+			// first get the write lock
+			provider.attemptToAcquireLock();
+			// then wait for the readers to release their locks
+			Optional<String> readerContextOption;
+			while((readerContextOption = provider.getExistingReadLockContext()).isPresent()) {
+				log.info("Waiting for read lock to be released: "+readerContextOption.get());
+				Thread.sleep(2000);
+			}
+			// code to execute while holding the lock added here...
+		}
+	 * </pre>
+	 * 
 	 * 
 	 * @param request
 	 * @return
@@ -26,7 +35,13 @@ public interface WriteReadSemaphore {
 	 * Get a read lock provider for the given request. This method should be called
 	 * from within a try-with-resource to ensure the acquired lock is automatically
 	 * released, even for failures.
-	 * 
+	 * <pre>
+		try(ReadLockProvider provider = writeReadSemaphore.getReadLockProvider(request)){
+			// first get the write lock
+			provider.attemptToAcquireLock();
+			// code to execute while holding the lock added here...
+		}
+	 * </pre>
 	 * @param request
 	 * @return
 	 * @throws LockUnavilableException Thrown if any of the requested read locks

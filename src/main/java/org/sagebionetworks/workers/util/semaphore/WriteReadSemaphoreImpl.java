@@ -1,5 +1,7 @@
 package org.sagebionetworks.workers.util.semaphore;
 
+import java.util.Optional;
+
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 
 public class WriteReadSemaphoreImpl implements WriteReadSemaphore {
@@ -33,4 +35,19 @@ public class WriteReadSemaphoreImpl implements WriteReadSemaphore {
 		return new ReadLockProviderImpl(countingSemaphore, maxNumberOfReaders, request);
 	}
 
+	public static void test() {
+		WriteLockRequest request = null;
+		WriteReadSemaphore writeReadSemaphore;
+		try(WriteLockProvider provider = writeReadSemaphore.getWriteLockProvider(request)){
+			// first get the write lock
+			provider.attemptToAcquireLock();
+			// then wait for the readers to release their locks
+			Optional<String> readerContextOption;
+			while((readerContextOption = provider.getExistingReadLockContext()).isPresent()) {
+				log.info("Waiting for read lock to be released: "+readerContextOption.get());
+				Thread.sleep(2000);
+			}
+		}
+	}
+	
 }
