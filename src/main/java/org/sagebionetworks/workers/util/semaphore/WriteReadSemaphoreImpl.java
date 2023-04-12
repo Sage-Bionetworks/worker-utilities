@@ -1,7 +1,5 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import java.util.Optional;
-
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 
 public class WriteReadSemaphoreImpl implements WriteReadSemaphore {
