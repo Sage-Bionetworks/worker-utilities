@@ -1,8 +1,10 @@
 package org.sagebionetworks.workers.util.semaphore;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
@@ -13,35 +15,40 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import org.junit.Before;
-import org.junit.Test;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.sagebionetworks.common.util.progress.ProgressCallback;
 import org.sagebionetworks.common.util.progress.ProgressingRunner;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 import org.sagebionetworks.database.semaphore.LockReleaseFailedException;
 import org.sagebionetworks.workers.util.Gate;
 
+@ExtendWith(MockitoExtension.class)
 public class SemaphoreGatedRunnerImplTest {
 
 	@Mock
-	CountingSemaphore mockSemaphore;
-	SemaphoreGatedRunnerConfiguration config;
-	SemaphoreGatedRunnerImpl semaphoreGatedRunner;
+	private CountingSemaphore mockSemaphore;
+	private SemaphoreGatedRunnerConfiguration config;
+	private SemaphoreGatedRunnerImpl semaphoreGatedRunner;
 	@Mock
-	ProgressingRunner mockRunner;
+	private ProgressingRunner mockRunner;
 
 	@Mock
-	Gate mockGate;
-	String lockKey;
-	long lockTimeoutSec;
-	long lockTimeoutMS;
-	int maxLockCount;
+	private Gate mockGate;
+	private String lockKey;
+	private long lockTimeoutSec;
+	private long lockTimeoutMS;
+	private int maxLockCount;
 	
-	String atoken;
+	private String atoken;
 	
-	@Before
+	@BeforeEach
 	public void before(){
 		MockitoAnnotations.initMocks(this);
 		
@@ -54,19 +61,22 @@ public class SemaphoreGatedRunnerImplTest {
 		semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(mockSemaphore, config, mockGate);
 		
 		atoken = "atoken";
-		when(mockSemaphore.attemptToAcquireLock(lockKey, lockTimeoutSec, maxLockCount)).thenReturn(atoken);
-		when(mockGate.canRun()).thenReturn(true);
 	}
 	
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void testConfigureBad(){
 		mockRunner = null;
 		config = null;
-		semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(mockSemaphore, config, mockGate);
+		assertThrows(IllegalArgumentException.class, ()->{
+			semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(mockSemaphore, config, mockGate);
+		});
+
 	}
 	
 	@Test
 	public void testHappy() throws Exception{
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
+		when(mockGate.canRun()).thenReturn(true);
 		// start the semaphoreGatedRunner
 		semaphoreGatedRunner.run();
 		// runner should be run
@@ -79,12 +89,14 @@ public class SemaphoreGatedRunnerImplTest {
 	
 	@Test
 	public void testLockReleaseOnException() throws Exception{
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
+		when(mockGate.canRun()).thenReturn(true);
 		// The lock must be released on exception.
 		// Simulate an exception thrown by the runner.
 		doThrow(new RuntimeException("Something went wrong!")).when(mockRunner).run(any(ProgressCallback.class));
 		// Issue a lock.
 		String atoken = "atoken";
-		when(mockSemaphore.attemptToAcquireLock(lockKey, lockTimeoutSec, maxLockCount)).thenReturn(atoken);
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
 		semaphoreGatedRunner.run();
 		// The lock should get released.
 		verify(mockSemaphore).releaseLock(lockKey, atoken);
@@ -92,8 +104,10 @@ public class SemaphoreGatedRunnerImplTest {
 	
 	@Test
 	public void testLockNotAcquired() throws Exception{
-		// Null is returned when a lock cannot be acquired.
-		when(mockSemaphore.attemptToAcquireLock(lockKey, lockTimeoutSec, maxLockCount)).thenReturn(null);
+		// Empty is returned when a lock cannot be acquired.
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.empty());
+		when(mockGate.canRun()).thenReturn(true);
+		
 		// Start the run
 		semaphoreGatedRunner.run();
 		// the lock should not be released or refreshed.
@@ -105,7 +119,9 @@ public class SemaphoreGatedRunnerImplTest {
 	
 	@Test
 	public void testExceptionOnAcquireLock() throws Exception{
-		when(mockSemaphore.attemptToAcquireLock(lockKey, lockTimeoutSec, maxLockCount)).thenThrow(new OutOfMemoryError("Something bad!"));
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenThrow(new OutOfMemoryError("Something bad!"));
+		when(mockGate.canRun()).thenReturn(true);
+		
 		// Start the run. The exception should not make it out of the runner.
 		semaphoreGatedRunner.run();
 		// the lock should not be released or refreshed.
@@ -115,17 +131,23 @@ public class SemaphoreGatedRunnerImplTest {
 		verify(mockRunner, never()).run(any(ProgressCallback.class));
 	}
 	
-	@Test (expected=LockReleaseFailedException.class)
+	@Test
 	public void testLockReleaseFailures() throws Exception{
-		String atoken = "atoken";
-		when(mockSemaphore.attemptToAcquireLock(lockKey, lockTimeoutSec, maxLockCount)).thenReturn(atoken);
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
+		when(mockGate.canRun()).thenReturn(true);
 		doThrow(new LockReleaseFailedException("Failed to release the lock!")).when(mockSemaphore).releaseLock(lockKey,  atoken);
-		// start the semaphoreGatedRunner
-		semaphoreGatedRunner.run();
+		
+		assertThrows(LockReleaseFailedException.class, ()->{
+			// start the semaphoreGatedRunner
+			semaphoreGatedRunner.run();
+		});
+
 	}
 	
 	@Test
 	public void testProgressHeartbeat() throws Exception{
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
+		when(mockGate.canRun()).thenReturn(true);
 		// disable the heartbeat.
 		semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(mockSemaphore, config, mockGate);
 		setupRunnerSleep();
@@ -139,6 +161,7 @@ public class SemaphoreGatedRunnerImplTest {
 
 	@Test
 	public void testRun_canRunIsTrue() throws Exception {
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
 		when(mockGate.canRun()).thenReturn(true);
 		setupRunnerSleep();
 
@@ -151,6 +174,7 @@ public class SemaphoreGatedRunnerImplTest {
 
 	@Test
 	public void testRun_gateIsNull() throws Exception {
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
 		semaphoreGatedRunner = new SemaphoreGatedRunnerImpl(mockSemaphore, config, null);
 		setupRunnerSleep();
 
@@ -173,6 +197,9 @@ public class SemaphoreGatedRunnerImplTest {
 
 	@Test
 	public void testRunWithCanRunTrueAndThenFalse() throws Exception {
+		
+		when(mockSemaphore.attemptToAcquireLock(any(), anyLong(), anyInt(), any())).thenReturn(Optional.of(atoken));
+		
 		when(mockGate.canRun()).thenReturn(true, false);
 		setupRunnerSleep();
 
@@ -193,6 +220,8 @@ public class SemaphoreGatedRunnerImplTest {
 
 	@Test
 	public void canRun_GateCanRunTrue(){
+		when(mockGate.canRun()).thenReturn(true);
+		
 		assertTrue(semaphoreGatedRunner.canRun());
 	}
 

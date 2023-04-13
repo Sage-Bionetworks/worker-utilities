@@ -11,6 +11,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -82,7 +83,7 @@ public class MessageDrivenWorkerStackTest {
 	@Test
 	public void testProgressHeartbeatEnabled() throws RecoverableMessageException, Exception {
 		
-		when(mockSemaphore.attemptToAcquireLock(any(String.class), anyLong(), anyInt())).thenReturn(token);
+		when(mockSemaphore.attemptToAcquireLock(any(String.class), anyLong(), anyInt(), any())).thenReturn(Optional.of(token));
 		when(mockGate.canRun()).thenReturn(true);
 		when(mockSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
 		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
@@ -113,7 +114,7 @@ public class MessageDrivenWorkerStackTest {
 	@Test
 	public void testProgressHeartbeatDisabled() throws RecoverableMessageException, Exception {
 
-		when(mockSemaphore.attemptToAcquireLock(any(String.class), anyLong(), anyInt())).thenReturn(token);
+		when(mockSemaphore.attemptToAcquireLock(any(String.class), anyLong(), anyInt(), any())).thenReturn(Optional.of(token));
 		when(mockGate.canRun()).thenReturn(true);
 		when(mockSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
 		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
