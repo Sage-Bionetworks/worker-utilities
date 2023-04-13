@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 
-class WriteLockProviderImpl implements WriteLockProvider {
+class WriteLockImpl implements WriteLock {
 
 	private final CountingSemaphore countingSemaphore;
 	private final WriteLockRequest request;
@@ -15,7 +15,7 @@ class WriteLockProviderImpl implements WriteLockProvider {
 	private String writeToken;
 	private ProgressListener listener;
 
-	public WriteLockProviderImpl(CountingSemaphore countingSemaphore, WriteLockRequest request) {
+	public WriteLockImpl(CountingSemaphore countingSemaphore, WriteLockRequest request) {
 		super();
 		if(countingSemaphore == null) {
 			throw new IllegalArgumentException("CountingSemaphore cannot be null");
@@ -29,8 +29,7 @@ class WriteLockProviderImpl implements WriteLockProvider {
 		this.writeLockKey = Constants.createWriterLockKey(request.getLockKey());
 	}
 
-	@Override
-	public void attemptToAcquireLock() {
+	void attemptToAcquireLock() {
 		// reserve a writer token if possible
 		Optional<String> tokenOptional = this.countingSemaphore.attemptToAcquireLock(writeLockKey,
 				request.getCallback().getLockTimeoutSeconds(), Constants.WRITER_MAX_LOCKS, request.getCallersContext());

@@ -6,6 +6,6 @@ package org.sagebionetworks.workers.util.semaphore;
  * Note: This lock must be acquired using try-with-resources to ensure that the
  * lock is unconditionally released.
  */
-public interface ReadLockProvider extends LockProvider {
+public interface ReadLock extends Lock {
 
 }

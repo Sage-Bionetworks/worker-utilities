@@ -11,9 +11,9 @@ import org.apache.logging.log4j.Logger;
 import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 
-class ReadLockProviderImpl implements ReadLockProvider {
+class ReadLockImpl implements ReadLock {
 
-	private static final Logger log = LogManager.getLogger(ReadLockProviderImpl.class);
+	private static final Logger log = LogManager.getLogger(ReadLockImpl.class);
 
 	private final CountingSemaphore countingSemaphore;
 	private final int maxNumberOfReaders;
@@ -21,7 +21,7 @@ class ReadLockProviderImpl implements ReadLockProvider {
 	private final Map<String, String> keyToTokenMap;
 	private ProgressListener listener;
 
-	public ReadLockProviderImpl(CountingSemaphore countingSemaphore, int maxNumberOfReaders, ReadLockRequest request) {
+	public ReadLockImpl(CountingSemaphore countingSemaphore, int maxNumberOfReaders, ReadLockRequest request) {
 		if(countingSemaphore == null) {
 			throw new IllegalArgumentException("CountingSemaphore cannot be null");
 		}
@@ -34,8 +34,7 @@ class ReadLockProviderImpl implements ReadLockProvider {
 		this.keyToTokenMap = new HashMap<>(request.getLockKeys().length);
 	}
 	
-	@Override
-	public void attemptToAcquireLock() throws LockUnavilableException {
+	void attemptToAcquireLock() throws LockUnavilableException {
 		// Stop if there are any outstanding write locks.
 		for (String requestKey : request.getLockKeys()) {
 			String writeLockKey = Constants.createWriterLockKey(requestKey);

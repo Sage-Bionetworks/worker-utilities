@@ -17,19 +17,33 @@ public class WriteReadSemaphoreImpl implements WriteReadSemaphore {
 	}
 	
 	@Override
-	public WriteLockProvider getWriteLockProvider(WriteLockRequest request) throws LockUnavilableException {
+	public WriteLock getWriteLock(WriteLockRequest request) throws Exception {
 		if(request == null) {
 			throw new IllegalArgumentException("Request cannot be null");
 		}
-		return new WriteLockProviderImpl(countingSemaphore, request);
+		WriteLockImpl lock = new WriteLockImpl(countingSemaphore, request);
+		try {
+			lock.attemptToAcquireLock();
+			return lock;
+		} catch (Exception e) {
+			lock.close();
+			throw e;
+		}
 	}
 
 
 	@Override
-	public ReadLockProvider getReadLockProvider(ReadLockRequest request) throws LockUnavilableException {
+	public ReadLock getReadLock(ReadLockRequest request) throws Exception {
 		if(request == null) {
 			throw new IllegalArgumentException("Request cannot be null");
 		}
-		return new ReadLockProviderImpl(countingSemaphore, maxNumberOfReaders, request);
+		ReadLockImpl lock =  new ReadLockImpl(countingSemaphore, maxNumberOfReaders, request);
+		try {
+			lock.attemptToAcquireLock();
+			return lock;
+		} catch (Exception e) {
+			lock.close();
+			throw e;
+		}
 	}
 }

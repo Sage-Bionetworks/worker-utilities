@@ -1,51 +1,65 @@
 package org.sagebionetworks.workers.util.semaphore;
 
+import org.sagebionetworks.database.semaphore.CountingSemaphore;
+
 /**
- * An abstraction to provide either shared read locks or exclusive write locks.
+ * An abstraction to provide both read (shared) or write (exclusive) locks for a
+ * cluster of machines. This functionality is built on top of the database
+ * backed {@link CountingSemaphore}. If a lock cannot be issued immediately a
+ * {@link LockUnavilableException} with be thrown without waiting
+ * (non-blocking).
  * 
  */
 public interface WriteReadSemaphore {
 
 	/**
-	 * Get a write lock provider for the given request. This method should be called
-	 * from within a try-with-resource to ensure the acquired lock is automatically
-	 * released, even for failures. For example:
+	 * Get a write lock for the given request. A write lock can be acquired as long
+	 * as there are no other write locks with the same key. When a write lock is
+	 * acquired, it will block the creation of new read locks, but exist read locks
+	 * will be unchanged. The caller can check if there are existing read locks by
+	 * calling {@link WriteLock#getExistingReadLockContext()}.
+	 * <p>
+	 * See the following example:
+	 * 
 	 * <pre>
-		try(WriteLockProvider provider = writeReadSemaphore.getWriteLockProvider(request)){
-			// first get the write lock
-			provider.attemptToAcquireLock();
-			// then wait for the readers to release their locks
-			Optional<String> readerContextOption;
-			while((readerContextOption = provider.getExistingReadLockContext()).isPresent()) {
-				log.info("Waiting for read lock to be released: "+readerContextOption.get());
-				Thread.sleep(2000);
-			}
-			// code to execute while holding the lock added here...
-		}
+	 * try (WriteLock lock = writeReadSemaphore.getWriteLock(request)) {
+	 * 	// wait for all read locks to be released
+	 * 	Optional<String> readerContextOption;
+	 * 	while ((readerContextOption = lock.getExistingReadLockContext()).isPresent()) {
+	 * 		log.info("Waiting for read lock to be released: " + readerContextOption.get());
+	 * 		Thread.sleep(2000);
+	 * 	}
+	 * 	// code to execute while holding the lock added here...
+	 * }
 	 * </pre>
 	 * 
 	 * 
 	 * @param request
 	 * @return
 	 * @throws LockUnavilableException Throw if the write lock cannot be acquired.
+	 * 
 	 */
-	WriteLockProvider getWriteLockProvider(WriteLockRequest request) throws LockUnavilableException;
+	WriteLock getWriteLock(WriteLockRequest request) throws LockUnavilableException, Exception;
 
 	/**
-	 * Get a read lock provider for the given request. This method should be called
-	 * from within a try-with-resource to ensure the acquired lock is automatically
-	 * released, even for failures.
+	 * Get a read lock for the given request. Multiple read locks can be acquired
+	 * for the same key concurrently. There is a limit on the number of read locks
+	 * allowed for a single key that is configured in the constructor:
+	 * {@link WriteReadSemaphoreImpl#WriteReadSemaphoreImpl(org.sagebionetworks.database.semaphore.CountingSemaphore, int)}.
+	 * While a write lock is held for a key, new read locks cannot be acquired until
+	 * the write lock is released. However, any read locks acquired before a write
+	 * lock is acquired will be allowed to continue normally.
+	 * 
 	 * <pre>
-		try(ReadLockProvider provider = writeReadSemaphore.getReadLockProvider(request)){
-			// first get the write lock
-			provider.attemptToAcquireLock();
-			// code to execute while holding the lock added here...
-		}
+	 * try (ReadLock lock = writeReadSemaphore.getReadLock(request)) {
+	 * 	// code to execute while holding the lock added here...
+	 * }
 	 * </pre>
+	 * 
 	 * @param request
 	 * @return
 	 * @throws LockUnavilableException Thrown if any of the requested read locks
 	 *                                 cannot be be acquired.
 	 */
-	ReadLockProvider getReadLockProvider(ReadLockRequest request) throws LockUnavilableException;
+	ReadLock getReadLock(ReadLockRequest request) throws LockUnavilableException, Exception;
 }

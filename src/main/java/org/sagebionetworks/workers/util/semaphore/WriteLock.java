@@ -3,13 +3,13 @@ package org.sagebionetworks.workers.util.semaphore;
 import java.util.Optional;
 
 /**
- * Represents a provider of an exclusive write lock.
+ * Represents an exclusive write lock.
  * <p>
- * Note: This provider must be used with try-with-resources to ensure that the
+ * Note: This lock must be used with try-with-resources to ensure that the
  * lock is unconditionally released.
  *
  */
-public interface WriteLockProvider extends LockProvider {
+public interface WriteLock extends Lock {
 
 	/**
 	 * If there are any existing read locks associated with this write lock then

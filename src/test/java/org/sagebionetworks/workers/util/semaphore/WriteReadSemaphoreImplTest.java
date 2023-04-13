@@ -63,7 +63,7 @@ public class WriteReadSemaphoreImplTest {
 	public void testGetReadLockProviderWithNullRequest() {
 		String message = assertThrows(IllegalArgumentException.class, () -> {
 			// call under test
-			semaphore.getReadLockProvider(null);
+			semaphore.getReadLock(null);
 		}).getMessage();
 		assertEquals("Request cannot be null", message);
 	}
@@ -72,7 +72,7 @@ public class WriteReadSemaphoreImplTest {
 	public void testGetWriteLockProviderWithNullRequest() {
 		String message = assertThrows(IllegalArgumentException.class, () -> {
 			// call under test
-			semaphore.getWriteLockProvider(null);
+			semaphore.getWriteLock(null);
 		}).getMessage();
 		assertEquals("Request cannot be null", message);
 	}
@@ -86,9 +86,8 @@ public class WriteReadSemaphoreImplTest {
 		when(mockCallback.getLockTimeoutSeconds()).thenReturn(maxTimeout);
 
 		// call under test
-		try (ReadLockProvider provider = semaphore
-				.getReadLockProvider(new ReadLockRequest(mockCallback, context, keys))) {
-			provider.attemptToAcquireLock();
+		try (ReadLock provider = semaphore
+				.getReadLock(new ReadLockRequest(mockCallback, context, keys))) {
 		}
 		
 		verify(mockCountingSemaphore).getFirstUnexpiredLockContext("one_WRITER_LOCK");
@@ -121,9 +120,8 @@ public class WriteReadSemaphoreImplTest {
 		when(mockCallback.getLockTimeoutSeconds()).thenReturn(maxTimeout);
 
 		// call under test
-		try (WriteLockProvider provider = semaphore
-				.getWriteLockProvider(new WriteLockRequest(mockCallback, context, keys[0]))) {
-			provider.attemptToAcquireLock();
+		try (WriteLock provider = semaphore
+				.getWriteLock(new WriteLockRequest(mockCallback, context, keys[0]))) {
 			provider.getExistingReadLockContext();
 			provider.getExistingReadLockContext();
 			provider.getExistingReadLockContext();

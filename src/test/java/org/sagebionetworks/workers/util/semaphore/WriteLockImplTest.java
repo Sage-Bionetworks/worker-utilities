@@ -27,7 +27,7 @@ import org.sagebionetworks.common.util.progress.ProgressListener;
 import org.sagebionetworks.database.semaphore.CountingSemaphore;
 
 @ExtendWith(MockitoExtension.class)
-public class WriteLockProviderImplTest {
+public class WriteLockImplTest {
 
 	@Mock
 	private ProgressCallback mockCallback;
@@ -35,6 +35,7 @@ public class WriteLockProviderImplTest {
 	private CountingSemaphore mockCountingSemaphore;
 	@Captor
 	private ArgumentCaptor<ProgressListener> listenerCaptor;
+	private WriteReadSemaphore semaphore;
 
 	private String lockKey;
 	private long maxTimeout;
@@ -47,6 +48,7 @@ public class WriteLockProviderImplTest {
 		maxTimeout = 31L;
 		context = "some context";
 		lockToken = "lock_token";
+		semaphore = new WriteReadSemaphoreImpl(mockCountingSemaphore, 1);
 	}
 	
 	@Test
@@ -97,7 +99,7 @@ public class WriteLockProviderImplTest {
 		mockCountingSemaphore = null;
 		String message = assertThrows(IllegalArgumentException.class, () -> {
 			// call under test
-			new WriteLockProviderImpl(mockCountingSemaphore, new WriteLockRequest(mockCallback, context, lockKey));
+			new WriteLockImpl(mockCountingSemaphore, new WriteLockRequest(mockCallback, context, lockKey));
 		}).getMessage();
 		assertEquals("CountingSemaphore cannot be null", message);
 	}
@@ -106,7 +108,7 @@ public class WriteLockProviderImplTest {
 	public void testConstructorWithNullRequest() {
 		String message = assertThrows(IllegalArgumentException.class, () -> {
 			// call under test
-			new WriteLockProviderImpl(mockCountingSemaphore, null);
+			new WriteLockImpl(mockCountingSemaphore, null);
 		}).getMessage();
 		assertEquals("WriteLockRequest cannot be null", message);
 	}
@@ -117,12 +119,12 @@ public class WriteLockProviderImplTest {
 		when(mockCallback.getLockTimeoutSeconds()).thenReturn(maxTimeout);
 		when(mockCountingSemaphore.getFirstUnexpiredLockContext(any())).thenReturn(Optional.of("one"), Optional.of("two"), Optional.empty());
 		
-		try(WriteLockProvider provider = new WriteLockProviderImpl(mockCountingSemaphore, new WriteLockRequest(mockCallback, context, lockKey))){
+		// call under test
+		try(WriteLock lock = semaphore.getWriteLock(new WriteLockRequest(mockCallback, context, lockKey))){
 			// call under test
-			provider.attemptToAcquireLock();
-			provider.getExistingReadLockContext();
-			provider.getExistingReadLockContext();
-			provider.getExistingReadLockContext();
+			lock.getExistingReadLockContext();
+			lock.getExistingReadLockContext();
+			lock.getExistingReadLockContext();
 		}
 		
 		verify(mockCountingSemaphore).attemptToAcquireLock("one_WRITER_LOCK", maxTimeout, Constants.WRITER_MAX_LOCKS, context);
@@ -153,12 +155,12 @@ public class WriteLockProviderImplTest {
 		when(mockCountingSemaphore.getFirstUnexpiredLockContext(any())).thenReturn(Optional.of("other holder"));
 		
 		String message = assertThrows(LockUnavilableException.class, ()->{
-			try(WriteLockProvider provider = new WriteLockProviderImpl(mockCountingSemaphore, new WriteLockRequest(mockCallback, context, lockKey))){
+			// call under test
+			try(WriteLock lock = semaphore.getWriteLock(new WriteLockRequest(mockCallback, context, lockKey))){
 				// call under test
-				provider.attemptToAcquireLock();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
 			}
 		}).getMessage();
 		
@@ -180,12 +182,11 @@ public class WriteLockProviderImplTest {
 		when(mockCountingSemaphore.getFirstUnexpiredLockContext(any())).thenReturn(Optional.empty());
 		
 		String message = assertThrows(LockUnavilableException.class, ()->{
-			try(WriteLockProvider provider = new WriteLockProviderImpl(mockCountingSemaphore, new WriteLockRequest(mockCallback, context, lockKey))){
-				// call under test
-				provider.attemptToAcquireLock();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
+			// call under test
+			try(WriteLock lock = semaphore.getWriteLock(new WriteLockRequest(mockCallback, context, lockKey))){
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
 			}
 		}).getMessage();
 		
@@ -210,12 +211,11 @@ public class WriteLockProviderImplTest {
 		doThrow(exception).when(mockCallback).removeProgressListener(any());
 		
 		Throwable cause = assertThrows(IOException.class, ()->{
-			try(WriteLockProvider provider = new WriteLockProviderImpl(mockCountingSemaphore, new WriteLockRequest(mockCallback, context, lockKey))){
-				// call under test
-				provider.attemptToAcquireLock();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
+			// call under test
+			try(WriteLock lock = semaphore.getWriteLock(new WriteLockRequest(mockCallback, context, lockKey))){
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
 			}
 		}).getCause();
 		
@@ -254,12 +254,12 @@ public class WriteLockProviderImplTest {
 		
 		
 		Throwable cause = assertThrows(IOException.class, ()->{
-			try(WriteLockProvider provider = new WriteLockProviderImpl(mockCountingSemaphore, new WriteLockRequest(mockCallback, context, lockKey))){
+			// call under test
+			try(WriteLock lock = semaphore.getWriteLock(new WriteLockRequest(mockCallback, context, lockKey))){
 				// call under test
-				provider.attemptToAcquireLock();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
-				provider.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
+				lock.getExistingReadLockContext();
 			}
 		}).getCause();
 		
