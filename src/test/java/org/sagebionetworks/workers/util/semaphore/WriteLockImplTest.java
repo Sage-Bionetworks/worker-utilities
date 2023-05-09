@@ -164,7 +164,7 @@ public class WriteLockImplTest {
 			}
 		}).getMessage();
 		
-		assertEquals("Write lock unavailable for key: 'one' with context: 'other holder'", message);
+		assertEquals("Write lock unavailable for key: 'one'. Current lock holder's context: 'other holder'", message);
 		
 		verify(mockCountingSemaphore).attemptToAcquireLock("one_WRITER_LOCK", maxTimeout, Constants.WRITER_MAX_LOCKS, context);
 		verify(mockCountingSemaphore, times(1)).attemptToAcquireLock(any(), anyLong(), anyInt(), any());
@@ -190,7 +190,7 @@ public class WriteLockImplTest {
 			}
 		}).getMessage();
 		
-		assertEquals("Write lock unavailable for key: 'one' with context: 'null'", message);
+		assertEquals("Write lock unavailable for key: 'one'. Current lock holder's context: 'null'", message);
 		
 		verify(mockCountingSemaphore).attemptToAcquireLock("one_WRITER_LOCK", maxTimeout, Constants.WRITER_MAX_LOCKS, context);
 		verify(mockCountingSemaphore, times(1)).attemptToAcquireLock(any(), anyLong(), anyInt(), any());

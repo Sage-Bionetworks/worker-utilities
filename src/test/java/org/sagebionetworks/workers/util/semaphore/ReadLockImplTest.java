@@ -190,7 +190,7 @@ public class ReadLockImplTest {
 			}
 		}).getMessage();
 
-		assertEquals("Write lock unavailable for key: 'two' with context: 'some write context'", message);
+		assertEquals("Write lock unavailable for key: 'two'. Current lock holder's context: 'some write context'", message);
 
 		verify(mockCountingSemaphore).getFirstUnexpiredLockContext("one_WRITER_LOCK");
 		verify(mockCountingSemaphore).getFirstUnexpiredLockContext("two_WRITER_LOCK");
@@ -220,7 +220,7 @@ public class ReadLockImplTest {
 			}
 		}).getMessage();
 		
-		assertEquals("Read lock unavailable for key: 'three' with context: 'locked by someone else'", message);
+		assertEquals("Read lock unavailable for key: 'three'. Current lock holder's context: 'locked by someone else'", message);
 
 		verify(mockCountingSemaphore).getFirstUnexpiredLockContext("one_WRITER_LOCK");
 		verify(mockCountingSemaphore).getFirstUnexpiredLockContext("two_WRITER_LOCK");
@@ -305,7 +305,7 @@ public class ReadLockImplTest {
 			}
 		}).getMessage();
 		
-		assertEquals("Read lock unavailable for key: 'one' with context: 'null'", message);
+		assertEquals("Read lock unavailable for key: 'one'. Current lock holder's context: 'null'", message);
 
 		verify(mockCountingSemaphore).getFirstUnexpiredLockContext("one_WRITER_LOCK");
 		verify(mockCountingSemaphore).getFirstUnexpiredLockContext("two_WRITER_LOCK");

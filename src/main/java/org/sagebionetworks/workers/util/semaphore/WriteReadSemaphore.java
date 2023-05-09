@@ -39,7 +39,7 @@ public interface WriteReadSemaphore {
 	 * @throws LockUnavilableException Throw if the write lock cannot be acquired.
 	 * 
 	 */
-	WriteLock getWriteLock(WriteLockRequest request) throws LockUnavilableException, Exception;
+	WriteLock getWriteLock(WriteLockRequest request) throws LockUnavilableException;
 
 	/**
 	 * Get a read lock for the given request. Multiple read locks can be acquired
@@ -61,5 +61,5 @@ public interface WriteReadSemaphore {
 	 * @throws LockUnavilableException Thrown if any of the requested read locks
 	 *                                 cannot be be acquired.
 	 */
-	ReadLock getReadLock(ReadLockRequest request) throws LockUnavilableException, Exception;
+	ReadLock getReadLock(ReadLockRequest request) throws LockUnavilableException;
 }

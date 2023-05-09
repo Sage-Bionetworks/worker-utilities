@@ -22,7 +22,7 @@ public class LockUnavilableException extends RuntimeException {
 	 *                           prevented the acquisition of the lock.
 	 */
 	public LockUnavilableException(LockType lockType, String lockKey, String lockHoldersContext) {
-		super(String.format("%s lock unavailable for key: '%s' with context: '%s'", lockType.name(), lockKey, lockHoldersContext));
+		super(String.format("%s lock unavailable for key: '%s'. Current lock holder's context: '%s'", lockType.name(), lockKey, lockHoldersContext));
 		this.lockType = lockType;
 		this.lockKey = lockKey;
 		this.lockHoldersContext = lockHoldersContext;
