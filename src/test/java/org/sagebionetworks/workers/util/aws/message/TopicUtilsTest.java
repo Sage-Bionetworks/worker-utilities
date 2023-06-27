@@ -1,22 +1,29 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TopicUtilsTest {
 
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void generateSourceArnWithNull() {
-		TopicUtils.generateSourceArn(null);
+		assertThrows(IllegalArgumentException.class, () -> {			
+			TopicUtils.generateSourceArn(null);
+		});
 	}
 	
-	@Test (expected=IllegalArgumentException.class)
+	@Test
 	public void generateSourceArnWithEmptyList() {
-		TopicUtils.generateSourceArn(new ArrayList<String>());
+		assertThrows(IllegalArgumentException.class, () -> {
+			TopicUtils.generateSourceArn(new ArrayList<String>());
+		});
 	}
 	
 	@Test
