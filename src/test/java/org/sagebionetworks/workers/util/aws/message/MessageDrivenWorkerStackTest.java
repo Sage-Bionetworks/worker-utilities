@@ -1,16 +1,18 @@
 package org.sagebionetworks.workers.util.aws.message;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -67,8 +69,8 @@ public class MessageDrivenWorkerStackTest {
 		message = new Message();
 		message.setReceiptHandle("handle");
 		results.setMessages(Arrays.asList(message));
-		ReceiveMessageResult emptyResults = new ReceiveMessageResult();
-		emptyResults.setMessages(new LinkedList<Message>());
+		emptyResults = new ReceiveMessageResult();
+		emptyResults.setMessages(Collections.emptyList());
 
 		// default config
 		config = new MessageDrivenWorkerStackConfiguration();
@@ -84,7 +86,7 @@ public class MessageDrivenWorkerStackTest {
 	public void testProgressHeartbeatEnabled() throws RecoverableMessageException, Exception {
 		
 		when(mockSemaphore.attemptToAcquireLock(any(String.class), anyLong(), anyInt(), any())).thenReturn(Optional.of(token));
-		when(mockGate.canRun()).thenReturn(true);
+		when(mockGate.canRun()).thenReturn(true, true, false);
 		when(mockSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
 		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
 
@@ -109,13 +111,14 @@ public class MessageDrivenWorkerStackTest {
 		// The progress should refresh the lock timeout.
 		verify(mockSQSClient, atLeast(2)).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
 		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
+		verify(mockSemaphore, atLeast(3)).refreshLockTimeout("lockKey", "aToken", 4L);
 	}
 
 	@Test
 	public void testProgressHeartbeatDisabled() throws RecoverableMessageException, Exception {
 
 		when(mockSemaphore.attemptToAcquireLock(any(String.class), anyLong(), anyInt(), any())).thenReturn(Optional.of(token));
-		when(mockGate.canRun()).thenReturn(true);
+		when(mockGate.canRun()).thenReturn(true, true, false);
 		when(mockSQSClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(results, emptyResults);
 		when(mockSQSClient.getQueueUrl(anyString())).thenReturn(new GetQueueUrlResult().withQueueUrl(queueUrl));
 		doThrow(LockKeyNotFoundException.class).when(mockSemaphore).refreshLockTimeout(anyString(), anyString(),
@@ -137,8 +140,8 @@ public class MessageDrivenWorkerStackTest {
 		// call under test
 		stack.run();
 		// The progress should refresh the lock timeout.
-		verify(mockSQSClient, never()).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
 		verify(mockRunner).run(any(ProgressCallback.class), any(Message.class));
+		verify(mockSemaphore).refreshLockTimeout("lockKey", "aToken", 4L);
 	}
 
 }

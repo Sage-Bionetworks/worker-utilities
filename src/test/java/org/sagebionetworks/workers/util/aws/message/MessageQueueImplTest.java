@@ -1,39 +1,21 @@
 package org.sagebionetworks.workers.util.aws.message;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyList;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
-import com.amazonaws.services.cloudwatch.model.PutMetricAlarmRequest;
-import com.amazonaws.services.sqs.model.GetQueueUrlResult;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amazonaws.services.sns.AmazonSNSClient;
-import com.amazonaws.services.sns.model.CreateTopicRequest;
-import com.amazonaws.services.sns.model.CreateTopicResult;
-import com.amazonaws.services.sns.model.ListSubscriptionsByTopicRequest;
-import com.amazonaws.services.sns.model.ListSubscriptionsByTopicResult;
-import com.amazonaws.services.sns.model.Subscription;
 import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.CreateQueueRequest;
-import com.amazonaws.services.sqs.model.CreateQueueResult;
-import com.amazonaws.services.sqs.model.GetQueueAttributesRequest;
-import com.amazonaws.services.sqs.model.GetQueueAttributesResult;
-import com.amazonaws.services.sqs.model.SetQueueAttributesRequest;
-import org.mockito.runners.MockitoJUnitRunner;
+import com.amazonaws.services.sqs.model.GetQueueUrlResult;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class MessageQueueImplTest {
 
 	@Mock
@@ -42,7 +24,7 @@ public class MessageQueueImplTest {
 	String queueUrl;
 	MessageQueueConfiguration config;
 
-	@Before
+	@BeforeEach
 	public void setUp() throws Exception {
 		queueUrl = "queueURL";
 
